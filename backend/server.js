@@ -39,7 +39,11 @@ const transporter = nodemailer.createTransport({
 });
 
 app.use(cors({
-  origin: true,
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    return callback(null, true);
+  },
   credentials: true,
   exposedHeaders: ['x-rtb-fingerprint-id', 'request-id'],
 }));
@@ -55,13 +59,20 @@ app.use(express.json({ limit: '10mb' }));
 
 
 /* ═══════════ UPLOADS CONFIG ═══════════ */
-const uploadsDir = path.join(__dirname, '..', 'frontend', 'public', 'images', 'uploads');
+const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Serve uploaded images
+// Serve uploaded images at the path stored in the DB (/images/uploads/...)
+app.use('/images/uploads', express.static(uploadsDir));
+// Backward compat: also serve at /uploads
 app.use('/uploads', express.static(uploadsDir));
+// Serve static product images (earrings.png, etc.) that the frontend/public/images holds
+const staticImagesDir = path.join(__dirname, '..', 'frontend', 'public', 'images');
+if (fs.existsSync(staticImagesDir)) {
+  app.use('/images', express.static(staticImagesDir));
+}
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),
@@ -451,6 +462,7 @@ async function startServer() {
     console.warn('Running without MongoDB connection. /api/products will return fallback data.');
   }
 
+  // Monolith mode: serve frontend dist files directly in production
   if (process.env.NODE_ENV === 'production') {
     const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
     app.use(express.static(frontendDist));
@@ -459,8 +471,9 @@ async function startServer() {
     });
   }
 
-  const server = app.listen(port, () => {
-    console.log(`Server listening on http://localhost:${port}`);
+  // Bind to 0.0.0.0 so Render (and similar PaaS) can reach the port
+  const server = app.listen(port, '0.0.0.0', () => {
+    console.log(`Server listening on http://0.0.0.0:${port}`);
   });
 
   server.on('error', (error) => {

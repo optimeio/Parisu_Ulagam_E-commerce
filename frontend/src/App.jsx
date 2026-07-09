@@ -9,6 +9,7 @@ import SaleBanner from './components/SaleBanner';
 import ImageSlider from './components/ImageSlider';
 import InvoiceView from './components/InvoiceView';
 import ProductReviews from './components/ProductReviews';
+import { assetUrl } from './config';
 
 /* —— categories state is now managed dynamically within the component —— */
 const fallbackProducts = [
