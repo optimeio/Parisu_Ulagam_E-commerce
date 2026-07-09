@@ -462,13 +462,21 @@ async function startServer() {
     console.warn('Running without MongoDB connection. /api/products will return fallback data.');
   }
 
-  // Monolith mode: serve frontend dist files directly in production
+  // Monolith mode: serve frontend dist files directly in production (if built locally/mono-deployed)
   if (process.env.NODE_ENV === 'production') {
     const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
-    app.use(express.static(frontendDist));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(frontendDist, 'index.html'));
-    });
+    const indexHtmlPath = path.join(frontendDist, 'index.html');
+    if (fs.existsSync(indexHtmlPath)) {
+      app.use(express.static(frontendDist));
+      app.get('*', (req, res) => {
+        res.sendFile(indexHtmlPath);
+      });
+    } else {
+      // If index.html is missing (e.g. backend deployed alone on Render), serve API details at root
+      app.get('/', (req, res) => {
+        res.json({ message: "Parisu Ulagam Backend API is running successfully." });
+      });
+    }
   }
 
   // Bind to 0.0.0.0 so Render (and similar PaaS) can reach the port
