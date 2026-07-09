@@ -29,8 +29,8 @@ Add your MongoDB connection details to `backend/.env` (example already in `backe
 - `MONGO_URI` — an Atlas SRV connection string (recommended), e.g. `mongodb+srv://Parisu:Ulagam@cluster0.oz8nygs.mongodb.net/?appName=Cluster0`
 - `STANDARD_MONGO_URI` — optional standard connection string example
 - `DB_NAME` — database name, default `Parisu_Ulagam`
-- `ADMIN_EMAIL` — admin portal email, default `parisuulagam@gmail.com`
-- `ADMIN_PASSWORD` — admin portal password, default `TSMGPVT@2026`
+- `ADMIN_EMAIL` — admin portal email, default `**********@gmail.com`
+- `ADMIN_PASSWORD` — admin portal password, default `***********`
 
 To seed the database with initial products run:
 
@@ -54,5 +54,5 @@ These values are available to the server for any future authentication or email 
 The backend also exposes an admin login endpoint:
 
 - `POST /api/admin/login`
-- JSON body: `{ "email": "parisuulagam@gmail.com", "password": "TSMGPVT@2026" }`
+- JSON body: `{ "email": "**********@gmail.com", "password": "********" }`
 - Returns success when credentials match `ADMIN_EMAIL` and `ADMIN_PASSWORD`
