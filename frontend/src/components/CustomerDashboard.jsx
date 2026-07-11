@@ -228,7 +228,7 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
   if (error) {
     return (
       <div className="admin-layout" style={{ zIndex: 9999, position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: '#ef4444', marginBottom: '20px' }}>{error}</p>
+        <p style={{ color: '#FF6F61', marginBottom: '20px' }}>{error}</p>
         <button onClick={onClose} className="secondary-btn">Close</button>
       </div>
     );
@@ -242,11 +242,11 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
       `}</style>
       <div className={`sidebar-overlay ${isSidebarOpen ? 'open' : ''}`} onClick={() => setIsSidebarOpen(false)}></div>
       <aside className={`admin-sidebar ${isSidebarOpen ? 'open' : ''}`}>
-        <div className="admin-sidebar-header">
+        <div className="admin-sidebar-header" style={{ background: 'linear-gradient(135deg, #012a32 0%, #03404c 100%)' }}>
           <div className="brand__logo" style={{width:'40px', height:'40px', fontSize:'0.9rem'}}>
             <img src="/royal_logo.png" alt="Parisu Ulagam" style={{width:'100%', height:'100%'}}/>
           </div>
-          <div className="brand__name" style={{fontSize:'1.1rem'}}>My Account</div>
+          <div style={{fontSize:'1.1rem', color:'#FCEDD6', fontWeight:'700', letterSpacing:'0.08em', textTransform:'uppercase', fontFamily:"'Cormorant Garamond', serif", WebkitTextFillColor:'#FCEDD6'}}>My Account</div>
         </div>
         <nav className="admin-sidebar-nav">
           <button className={`admin-nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => { setActiveTab('profile'); setIsSidebarOpen(false); }}>
@@ -275,12 +275,12 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
           </button>
           
           <div style={{ flex: 1 }} />
-          <button className="admin-nav-item" onClick={onClose} style={{ color: 'var(--gold)', borderTop: '1px solid var(--border)', paddingTop: '20px', marginTop: 'auto' }}>
+          <button className="admin-nav-item" onClick={onClose} style={{ color: '#03404c', borderTop: '1px solid var(--border)', paddingTop: '20px', marginTop: 'auto' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:'10px'}}><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
             Continue Shopping
           </button>
           {onLogout && (
-            <button className="admin-nav-item" onClick={onLogout} style={{ color: '#ef4444' }}>
+            <button className="admin-nav-item" onClick={onLogout} style={{ color: 'var(--text-muted)' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:'10px'}}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
               Sign Out
             </button>
@@ -292,7 +292,9 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
         <header className="admin-header">
           <div className="admin-header-title">
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <button className="hamburger-btn" onClick={() => setIsSidebarOpen(true)}>0</button>
+              <button className="hamburger-btn" onClick={() => setIsSidebarOpen(true)}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              </button>
               <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '300' }}>
                 {activeTab === 'profile' && 'My Profile'}
                 {activeTab === 'wishlist' && 'My Wishlist'}
@@ -304,7 +306,9 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
             </div>
           </div>
           <div className="admin-header-actions">
-            <span style={{ fontSize: '0.95rem', color: 'var(--text-muted)' }}>Welcome, <span style={{ color: 'var(--gold)' }}>{profile?.name || 'Customer'}</span></span>
+            <span style={{ fontSize: '0.95rem', color: '#ffffff', fontWeight: '500' }}>
+              Welcome, <span style={{ color: '#FCEDD6', fontWeight: '700', fontFamily: 'Playfair Display, serif' }}>{profile?.name || 'Customer'}</span>
+            </span>
           </div>
         </header>
 
@@ -447,12 +451,11 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
                       />
                       <p style={{ margin: '0 0 5px 0', fontWeight: '500', fontSize: '0.9rem' }}>{item.name}</p>
                       <p style={{ margin: '0 0 10px', color: 'var(--gold)', fontWeight: '600' }}>₹{item.price?.toLocaleString('en-IN')}</p>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
                         {addToCart && (
                           <button
                             onClick={() => { addToCart(item, 1); addToast(`${item.name} added to cart!`, 'success'); }}
-                            className="primary-btn"
-                            style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                            style={{ padding: '8px 16px', fontSize: '0.78rem', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase', background: 'linear-gradient(135deg, #012a32, #03404c)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s ease' }}
                           >
                             Add to Cart
                           </button>
@@ -460,8 +463,7 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
                         {removeFromWishlist && (
                           <button
                             onClick={() => { removeFromWishlist(item.id); addToast('Removed from wishlist', 'info'); }}
-                            className="secondary-btn"
-                            style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                            style={{ padding: '8px 16px', fontSize: '0.78rem', fontWeight: '600', letterSpacing: '0.05em', textTransform: 'uppercase', background: 'transparent', color: '#62828D', border: '1px solid #C8DCDD', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s ease' }}
                           >
                             Remove
                           </button>
@@ -516,7 +518,7 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
                           <div style={{ textAlign: 'right' }}>
                             <div style={{ fontWeight: '600', color: 'var(--gold)', fontSize: '1rem' }}>₹{(item.price * item.quantity)?.toLocaleString('en-IN')}</div>
                             {removeFromCart && (
-                              <button onClick={() => { removeFromCart(cartKey); addToast('Item removed from cart', 'info'); }} style={{ marginTop: '8px', background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem' }}>Remove</button>
+                              <button onClick={() => { removeFromCart(cartKey); addToast('Item removed from cart', 'info'); }} style={{ marginTop: '8px', background: 'none', border: 'none', color: '#FF6F61', cursor: 'pointer', fontSize: '0.8rem' }}>Remove</button>
                             )}
                           </div>
                         </div>
@@ -570,7 +572,7 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
                             <span style={{ padding: '5px 13px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: '700', background: order.paymentStatus === 'Paid' ? 'rgba(34,197,94,0.15)' : 'rgba(217,119,6,0.15)', color: order.paymentStatus === 'Paid' ? '#16a34a' : '#d97706', border: `1px solid ${order.paymentStatus === 'Paid' ? 'rgba(34,197,94,0.35)' : 'rgba(217,119,6,0.35)'}` }}>
                               {order.paymentStatus === 'Paid' ? '✅ Paid' : '⏳ Pending'}
                             </span>
-                            {isCancelled && <span style={{ padding: '5px 13px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: '700', background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>Cancelled</span>}
+                            {isCancelled && <span style={{ padding: '5px 13px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: '700', background: 'rgba(255, 111, 97,0.12)', color: '#FF6F61', border: '1px solid rgba(255, 111, 97,0.3)' }}>Cancelled</span>}
                           </div>
                         </div>
 
@@ -580,7 +582,7 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
                           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
                             {isCancelled ? (
                               <>
-                                <h2 style={{ margin: '0 0 6px', fontSize: '1.65rem', fontWeight: '800', color: '#ef4444' }}>Order Cancelled</h2>
+                                <h2 style={{ margin: '0 0 6px', fontSize: '1.65rem', fontWeight: '800', color: '#FF6F61' }}>Order Cancelled</h2>
                                 <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-muted)' }}>This order has been cancelled.</p>
                               </>
                             ) : (
@@ -807,7 +809,7 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
                 </p>
                 <form onSubmit={handleCustomRequestSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                   <div className="admin-form-group">
-                    <label>Product Type <span style={{ color: '#ef4444' }}>*</span></label>
+                    <label>Product Type <span style={{ color: '#FF6F61' }}>*</span></label>
                     <select name="productType" required style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }}>
                       <option value="">— Select Category —</option>
                       <option value="3D Models">3D Models</option>
@@ -818,7 +820,7 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
                     </select>
                   </div>
                   <div className="admin-form-group">
-                    <label>Requirements Description <span style={{ color: '#ef4444' }}>*</span></label>
+                    <label>Requirements Description <span style={{ color: '#FF6F61' }}>*</span></label>
                     <textarea
                       name="description"
                       rows={5}

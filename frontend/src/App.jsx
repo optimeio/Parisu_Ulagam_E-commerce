@@ -10,8 +10,20 @@ import ImageSlider from './components/ImageSlider';
 import InvoiceView from './components/InvoiceView';
 import ProductReviews from './components/ProductReviews';
 import { assetUrl } from './config';
+import HeroCategorySlider from './components/HeroCategorySlider';
+import FlyAnimation from './components/FlyAnimation';
+import CouponsAdmin from './components/CouponsAdmin';
 
 /* —— categories state is now managed dynamically within the component —— */
+
+/* —— STORE COLLECTIONS DEF —— */
+const STORE_COLLECTIONS = [
+  { id: 'Women', label: "Women's Collection", desc: "Exquisite jewelry, royal pearl earrings, and custom ornaments.", image: '/images/col_women.png' },
+  { id: 'Men', label: "Men's Collection", desc: "Premium engraved key chains, desk accessories, and corporate gifts.", image: '/images/col_men.png' },
+  { id: 'Kids', label: "Kids' Collection", desc: "3D modules, cute light lamps, toys, and playful gadgets.", image: '/images/col_kids.png' },
+  { id: 'Unisex & Couples', label: "Unisex & Couples", desc: "Beautiful wood engraving boxes, customized photo gifts, and love tokens.", image: '/images/col_unisex.png' }
+];
+
 const fallbackProducts = [
   {
     id: 'earrings-001',
@@ -134,7 +146,7 @@ const ImageArrayUpload = ({ name, initialImages = [] }) => {
           {images.map((img, idx) => (
             <div key={idx} style={{ position: 'relative', width: '60px', height: '60px', border: '1px solid var(--border)', borderRadius: '4px' }}>
               <img src={img} alt={`Preview ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }} />
-              <button type="button" onClick={() => setImages(images.filter((_, i) => i !== idx))} style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: '#fff', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', border: 'none', cursor: 'pointer', padding: 0 }}>✕</button>
+              <button type="button" onClick={() => setImages(images.filter((_, i) => i !== idx))} style={{ position: 'absolute', top: -6, right: -6, background: '#FF6F61', color: '#fff', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', border: 'none', cursor: 'pointer', padding: 0 }}>✕</button>
             </div>
           ))}
         </div>
@@ -180,6 +192,9 @@ function InnerApp() {
   const [selectedAdminCustomer, setSelectedAdminCustomer] = useState(null);
   const [offers, setOffers] = useState([]);
   const [siteSettings, setSiteSettings] = useState(null);
+
+  // Flying balloon animation state: { startX, startY, target: '#nav-cart-icon' | '#nav-wishlist-icon' }
+  const [flyAnim, setFlyAnim] = useState(null);
 
   // Fetch offers list (Public)
   const fetchOffers = useCallback(async () => {
@@ -477,6 +492,10 @@ function InnerApp() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutAddress, setCheckoutAddress] = useState('');
   const [checkoutPhone, setCheckoutPhone] = useState('');
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null); // { couponId, code, discountAmount, discountPercentage }
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState('');
 
   // Invoice state (shared for both admin and post-payment customer view)
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState(null);
@@ -1447,30 +1466,57 @@ function InnerApp() {
 
   /* —— Filter & Sort states —— */
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCollection, setSelectedCollection] = useState('All');
   const [sortBy, setSortBy] = useState('Default');
 
   /* —— wishlist check —— */
   const isWished = useCallback(id => wishlist.some(w => w.id === id), [wishlist]);
 
-  const toggleWish = (product) => {
+  const toggleWish = (product, event) => {
     if (isWished(product.id)) {
       removeFromWishlist(product.id);
       addToast('Removed from wishlist', 'info');
     } else {
       addToWishlist(product);
-      addToast('Added to wishlist ♡', 'success');
-      // If user is logged in, open their dashboard wishlist tab
-      if (currentUser) {
-        setDashboardInitialTab('wishlist');
-        setAccountMode('dashboard');
-        setAccountOpen(true);
+      // Trigger flying balloon to wishlist icon instead of redirecting
+      if (event) {
+        const rect = event.currentTarget.getBoundingClientRect();
+        setFlyAnim({
+          startX: rect.left + rect.width / 2,
+          startY: rect.top + rect.height / 2,
+          target: '#nav-wishlist-icon'
+        });
+      } else {
+        addToast('Added to wishlist ♡', 'success');
       }
     }
   };
 
+  // Wrapper to trigger cart balloon animation
+  const addToCartWithAnim = (product, qty, event) => {
+    addToCart(product, qty);
+    if (event) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setFlyAnim({
+        startX: rect.left + rect.width / 2,
+        startY: rect.top + rect.height / 2,
+        target: '#nav-cart-icon'
+      });
+    } else {
+      addToast(`${product.name} added to cart`, 'success');
+    }
+  };
+
+  // getDiscountedPrice: product.price IS the selling price.
+  // We keep this function for sorting & subtotal — it returns product.price always.
+  // The "MRP" (higher struck-out price) is calculated in the display as price / (1 - disc/100).
   const getDiscountedPrice = (p) => {
+    return p.price || 0;
+  };
+  // Helper to compute display MRP (struck-out "original" higher price)
+  const getMRP = (p) => {
     if (p.discountPercentage && p.discountPercentage > 0) {
-      return Math.round(p.price * (1 - p.discountPercentage / 100));
+      return Math.round(p.price / (1 - p.discountPercentage / 100));
     }
     return p.price;
   };
@@ -1491,6 +1537,45 @@ function InnerApp() {
     });
   };
 
+  // Coupon apply handler
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    setCouponError('');
+    try {
+      const resp = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: couponCode.trim(),
+          cartItems: itemsToCheckout.map(item => ({
+            productId: item._id || item.id,
+            price: item.price,
+            quantity: item.quantity
+          }))
+        })
+      });
+      const data = await resp.json();
+      if (data.success) {
+        setAppliedCoupon(data);
+        setCouponError('');
+        addToast(data.message, 'success');
+      } else {
+        setCouponError(data.message || 'Invalid coupon code.');
+        setAppliedCoupon(null);
+      }
+    } catch (err) {
+      setCouponError('Failed to validate coupon. Please try again.');
+    }
+    setCouponLoading(false);
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    setCouponError('');
+  };
+
   // Handle Checkout Process
   const handleCheckout = async () => {
     // Shipping method is now optional
@@ -1503,7 +1588,8 @@ function InnerApp() {
     const methodCharge = shipping ? shipping.shippingCharge : 0;
     const productShippingCharge = itemsToCheckout.reduce((sum, item) => sum + (item.shippingCharge || 0) * item.quantity, 0);
     const shippingCharge = methodCharge + productShippingCharge;
-    const grandTotal = checkoutSubtotal + shippingCharge;
+    const couponDiscount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+    const grandTotal = Math.max(0, checkoutSubtotal + shippingCharge - couponDiscount);
     
     setCheckoutLoading(true);
     
@@ -1567,8 +1653,15 @@ function InnerApp() {
             if (!buyNowItem) {
               clearCart();
             }
+            // Record coupon usage
+            if (appliedCoupon && appliedCoupon.couponId) {
+              try { fetch('/api/coupons/use', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ couponId: appliedCoupon.couponId }) }); } catch(e) {}
+            }
             setBuyNowItem(null);
             setCheckoutOpen(false);
+            setAppliedCoupon(null);
+            setCouponCode('');
+            setCouponError('');
             setCartOpen(false);
             // Refresh user profile so newly saved address appears in quick-select next time
             try {
@@ -1612,7 +1705,7 @@ function InnerApp() {
           shipping_address: checkoutAddress
         },
         theme: {
-          color: "#c9a84c"
+          color: "#FF6F61"
         }
       };
       
@@ -1636,9 +1729,40 @@ function InnerApp() {
 
   /* —— Filter & Sort Logic —— */
   const filteredProducts = products.filter(p => {
-    if (selectedCategory === 'All') return true;
-    if (selectedCategory === 'Offers') return (p.discountPercentage > 0 || p.offerId);
-    return p.category === selectedCategory;
+    // Determine product's collection (auto-map fallback if empty)
+    let productCol = p.collection;
+    if (!productCol) {
+      const cat = (p.category || '').toLowerCase();
+      if (cat.includes('earring') || cat.includes('jewel')) {
+        productCol = 'Women';
+      } else if (cat.includes('keychain') || cat.includes('key chain')) {
+        productCol = 'Men';
+      } else if (cat.includes('3d') || cat.includes('toy') || cat.includes('module')) {
+        productCol = 'Kids';
+      } else if (cat.includes('wood') || cat.includes('engrav')) {
+        productCol = 'Unisex & Couples';
+      } else {
+        productCol = 'Unisex & Couples';
+      }
+    }
+
+    // Category check
+    let matchCat = true;
+    if (selectedCategory !== 'All') {
+      if (selectedCategory === 'Offers') {
+        matchCat = !!(p.discountPercentage > 0 || p.offerId);
+      } else {
+        matchCat = (p.category === selectedCategory);
+      }
+    }
+
+    // Collection check
+    let matchCol = true;
+    if (selectedCollection !== 'All') {
+      matchCol = (productCol === selectedCollection);
+    }
+
+    return matchCat && matchCol;
   });
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {
@@ -1760,6 +1884,10 @@ function InnerApp() {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:'10px'}}><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
               Shipping
             </button>
+            <button className={`admin-nav-item ${adminActiveTab === 'coupons' ? 'active' : ''}`} onClick={() => setAdminActiveTab('coupons')}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:'10px'}}><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>
+              Coupons
+            </button>
             <button className={`admin-nav-item ${adminActiveTab === 'siteSettings' ? 'active' : ''}`} onClick={() => setAdminActiveTab('siteSettings')}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:'10px'}}><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
               Site Settings
@@ -1796,6 +1924,7 @@ function InnerApp() {
                 {adminActiveTab === 'reviews' && 'Product Reviews'}
                 {adminActiveTab === 'customers' && 'Customer Management'}
                 {adminActiveTab === 'shipping' && 'Shipping Management'}
+                {adminActiveTab === 'coupons' && 'Coupons'}
                 {adminActiveTab === 'siteSettings' && 'Site Settings'}
                 {adminActiveTab === 'customRequests' && 'Custom Requests'}
               </h2>
@@ -1818,7 +1947,7 @@ function InnerApp() {
                     <div className="admin-stat__label">Low Stock Alerts</div>
                   </div>
                   <div className="admin-stat">
-                    <div className="admin-stat__number" style={{ color: outOfStockCount > 0 ? '#ef4444' : 'inherit' }}>{outOfStockCount}</div>
+                    <div className="admin-stat__number" style={{ color: outOfStockCount > 0 ? '#FF6F61' : 'inherit' }}>{outOfStockCount}</div>
                     <div className="admin-stat__label">Out of Stock Items</div>
                   </div>
                 </div>
@@ -1866,7 +1995,7 @@ function InnerApp() {
                         date: r.createdAt,
                         badge: r.status,
                         icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M3.51 15A9 9 0 0 0 18.36 18.36L23 14"/></svg>,
-                        color: '#ef4444'
+                        color: '#FF6F61'
                       })),
                       ...adminReviews.map(r => ({
                         id: r._id,
@@ -2101,7 +2230,7 @@ function InnerApp() {
                 <div className="admin-stat__label">Low Stock (&lt;5)</div>
               </div>
               <div className="admin-stat">
-                <div className="admin-stat__number" style={{ color: outOfStockCount > 0 ? '#ef4444' : 'inherit' }}>{outOfStockCount}</div>
+                <div className="admin-stat__number" style={{ color: outOfStockCount > 0 ? '#FF6F61' : 'inherit' }}>{outOfStockCount}</div>
                 <div className="admin-stat__label">Out of Stock</div>
               </div>
             </div>
@@ -2256,9 +2385,9 @@ function InnerApp() {
                           </td>
                           <td><span style={{fontWeight:'700', color:'var(--accent)', fontSize:'1.1rem'}}>{o.discountPercentage}%</span></td>
                           <td>
-                            <span style={{color: isExpired ? '#ef4444' : 'inherit'}}>
+                            <span style={{color: isExpired ? '#FF6F61' : 'inherit'}}>
                               {new Date(o.validUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                              {isExpired && <span style={{fontSize:'0.75rem', display:'block', color:'#ef4444'}}>Expired</span>}
+                              {isExpired && <span style={{fontSize:'0.75rem', display:'block', color:'#FF6F61'}}>Expired</span>}
                             </span>
                           </td>
                           <td>
@@ -2539,7 +2668,7 @@ function InnerApp() {
                       <td>{o.customerName}<br/><span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{o.userEmail}</span></td>
                       <td>{new Date(o.createdAt).toLocaleDateString()}</td>
                       <td>₹{o.totalAmount?.toLocaleString('en-IN')}</td>
-                      <td><span className="admin-status-badge archived" style={{background: 'rgba(239,68,68,0.12)', color: '#ef4444'}}>Cancelled</span></td>
+                      <td><span className="admin-status-badge archived" style={{background: 'rgba(255, 111, 97,0.12)', color: '#FF6F61'}}>Cancelled</span></td>
                     </tr>
                   ))
                 )}
@@ -2736,7 +2865,7 @@ function InnerApp() {
                 {/* Wishlist Section */}
                 <div style={{ marginBottom: '30px' }}>
                   <h4 style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ef4444' }}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> Wishlist Items ({selectedAdminCustomer.wishlist?.length || 0})
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#FF6F61' }}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> Wishlist Items ({selectedAdminCustomer.wishlist?.length || 0})
                   </h4>
                   {selectedAdminCustomer.wishlist?.length > 0 ? (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
@@ -2870,8 +2999,8 @@ function InnerApp() {
                               fontSize: '0.75rem',
                               fontWeight: '700',
                               cursor: 'pointer',
-                              background: method.isActive ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-                              color: method.isActive ? '#22c55e' : '#ef4444'
+                              background: method.isActive ? 'rgba(34,197,94,0.15)' : 'rgba(255, 111, 97,0.15)',
+                              color: method.isActive ? '#22c55e' : '#FF6F61'
                             }}
                           >
                             {method.isActive ? 'Active' : 'Disabled'}
@@ -2893,7 +3022,7 @@ function InnerApp() {
                           </button>
                           <button 
                             className="primary-btn" 
-                            style={{padding: '4px 10px', fontSize: '0.85rem', background: '#ef4444', borderColor: '#ef4444'}}
+                            style={{padding: '4px 10px', fontSize: '0.85rem', background: '#FF6F61', borderColor: '#FF6F61'}}
                             onClick={() => setDeleteConfirmShipping(method)}
                           >
                             Delete
@@ -2910,13 +3039,13 @@ function InnerApp() {
             {deleteConfirmShipping && (
               <div className="admin-modal-overlay" style={{ zIndex: 1200 }}>
                 <div className="admin-modal-card" style={{ maxWidth: '400px', textAlign: 'center', padding: '30px' }}>
-                  <h3 style={{ color: '#ef4444', marginBottom: '15px' }}>Confirm Deletion</h3>
+                  <h3 style={{ color: '#FF6F61', marginBottom: '15px' }}>Confirm Deletion</h3>
                   <p style={{ marginBottom: '25px', color: 'var(--text-primary)' }}>
                     Are you sure you want to delete the shipping method <strong>{deleteConfirmShipping.providerName}</strong>?
                   </p>
                   <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
                     <button className="secondary-btn" onClick={() => setDeleteConfirmShipping(null)}>Cancel</button>
-                    <button className="primary-btn" style={{ background: '#ef4444', borderColor: '#ef4444' }} onClick={() => deleteShippingMethod(deleteConfirmShipping._id || deleteConfirmShipping.id)}>
+                    <button className="primary-btn" style={{ background: '#FF6F61', borderColor: '#FF6F61' }} onClick={() => deleteShippingMethod(deleteConfirmShipping._id || deleteConfirmShipping.id)}>
                       Yes, Delete
                     </button>
                   </div>
@@ -3100,6 +3229,11 @@ function InnerApp() {
           </div>
         )}
 
+        {/* —— COUPONS TAB —— */}
+        {adminActiveTab === 'coupons' && (
+          <CouponsAdmin adminToken={adminToken} products={adminProducts} addToast={addToast} />
+        )}
+
         {/* —— CUSTOM REQUESTS TAB —— */}
         {adminActiveTab === 'customRequests' && (
           <>
@@ -3255,13 +3389,19 @@ function InnerApp() {
                     {/* Collection */}
                     <div className="admin-form-group">
                       <label htmlFor="form-collection">Collection</label>
-                      <input
+                      <select
                         id="form-collection"
-                        type="text"
                         value={formCollection}
                         onChange={e => setFormCollection(e.target.value)}
-                        placeholder="e.g. Imperial Heritage"
-                      />
+                        style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '10px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }}
+                      >
+                        <option value="">None / Default</option>
+                        <option value="Men">Men</option>
+                        <option value="Women">Women</option>
+                        <option value="Kids">Kids</option>
+                        <option value="Unisex & Couples">Unisex & Couples</option>
+                        <option value="Custom & Corporate">Custom & Corporate</option>
+                      </select>
                     </div>
 
                     {/* Brand */}
@@ -3486,7 +3626,7 @@ function InnerApp() {
                 <button className="secondary-btn" onClick={() => setDeleteConfirmProduct(null)}>
                   <span>Keep Product</span>
                 </button>
-                <button className="primary-btn" style={{ background: '#c0392b', boxShadow: 'none' }} onClick={() => handleDeleteProduct(deleteConfirmProduct.id)}>
+                <button className="primary-btn" style={{ background: '#FF6F61', boxShadow: 'none' }} onClick={() => handleDeleteProduct(deleteConfirmProduct.id)}>
                   Yes, Delete
                 </button>
               </div>
@@ -3591,7 +3731,7 @@ function InnerApp() {
                 <button className="secondary-btn" onClick={() => setDeleteConfirmOffer(null)}>
                   <span>Keep Offer</span>
                 </button>
-                <button className="primary-btn" style={{ background: '#c0392b', boxShadow: 'none' }} onClick={() => handleDeleteOffer(deleteConfirmOffer.id)}>
+                <button className="primary-btn" style={{ background: '#FF6F61', boxShadow: 'none' }} onClick={() => handleDeleteOffer(deleteConfirmOffer.id)}>
                   Yes, Delete
                 </button>
               </div>
@@ -3679,7 +3819,7 @@ function InnerApp() {
                 <button className="secondary-btn" onClick={() => setDeleteConfirmCategory(null)}>
                   <span>Keep Category</span>
                 </button>
-                <button className="primary-btn" style={{ background: '#c0392b', boxShadow: 'none' }} onClick={() => handleDeleteCategory(deleteConfirmCategory.id)}>
+                <button className="primary-btn" style={{ background: '#FF6F61', boxShadow: 'none' }} onClick={() => handleDeleteCategory(deleteConfirmCategory.id)}>
                   Yes, Delete
                 </button>
               </div>
@@ -3731,7 +3871,7 @@ function InnerApp() {
             aria-label="Close menu"
             onClick={() => setMenuOpen(false)}
           >
-            
+            ✕
           </button>
           <div className="menu-drawer-logo"><img src="/royal_logo.png" alt="Parisu Ulagam" style={{width:'100%', height:'100%', objectFit:'contain'}}/></div>
           <a href="#home" className={activeSection === 'home' ? 'active' : ''} onClick={() => { setActiveSection('home'); setMenuOpen(false); }}>Home</a>
@@ -3773,7 +3913,7 @@ function InnerApp() {
           {currentUser && (
             <button
               className="menu-drawer-action-btn"
-              style={{ color: '#ef4444' }}
+              style={{ color: '#FF6F61' }}
               onClick={() => { setMenuOpen(false); handleUserLogout(); }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -3810,7 +3950,7 @@ function InnerApp() {
               setWishlistOpen(true);
             }
           }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            <svg id="nav-wishlist-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             {wishlist.length > 0 && <span className="badge">{wishlist.length}</span>}
           </button>
           <button className="icon-btn" aria-label="Cart" onClick={() => {
@@ -3822,7 +3962,7 @@ function InnerApp() {
               setCartOpen(true);
             }
           }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+            <svg id="nav-cart-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
             {cartCount > 0 && <span className="badge">{cartCount}</span>}
           </button>
 
@@ -3839,6 +3979,43 @@ function InnerApp() {
             <span className="mobile-search-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>
           </div>
         </div>
+
+        {!isSignupRoute && !isProductRoute && (
+          <div className="top-category-nav">
+            <button
+              onClick={() => {
+                setSelectedCategory('All');
+                document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className={selectedCategory === 'All' ? 'active' : ''}
+            >
+              Popular
+            </button>
+            {categories
+              .filter(cat => cat.id !== 'offer')
+              .map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => {
+                    setSelectedCategory(cat.id);
+                    document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className={selectedCategory === cat.id ? 'active' : ''}
+                >
+                  {cat.label || cat.id}
+                </button>
+              ))}
+            <button
+              onClick={() => {
+                setSelectedCategory('Offers');
+                document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className={selectedCategory === 'Offers' ? 'active' : ''}
+            >
+              Sale
+            </button>
+          </div>
+        )}
 
         {isSignupRoute ? (
           <SignupPage
@@ -3911,21 +4088,21 @@ function InnerApp() {
                   <div className="product-details-info" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <h1 style={{ fontSize: '2rem', margin: 0, lineHeight: 1.2 }}>{selectedProduct.name}</h1>
                     <div className="price-row" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      {selectedProduct.discountPercentage > 0 ? (
-                        <>
-                          <span style={{ fontSize: '1.5rem', color: 'var(--gold)', fontWeight: '700' }}>
-                            ₹{getDiscountedPrice(selectedProduct).toLocaleString('en-IN')}
-                          </span>
-                          <span style={{ fontSize: '1.1rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
-                            ₹{selectedProduct.price?.toLocaleString('en-IN')}
-                          </span>
-                          <span style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', padding: '4px 10px', borderRadius: '6px', fontWeight: 'bold' }}>
-                            {selectedProduct.discountPercentage}% OFF
-                          </span>
-                        </>
-                      ) : (
-                        <span style={{ fontSize: '1.5rem', fontWeight: '700' }}>₹{selectedProduct.price?.toLocaleString('en-IN')}</span>
-                      )}
+                       {selectedProduct.discountPercentage > 0 ? (
+                         <>
+                           <span style={{ fontSize: '1.5rem', color: 'var(--gold)', fontWeight: '800' }}>
+                             ₹{selectedProduct.price?.toLocaleString('en-IN')}
+                           </span>
+                           <span style={{ fontSize: '1.1rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                             ₹{getMRP(selectedProduct).toLocaleString('en-IN')}
+                           </span>
+                           <span style={{ background: 'rgba(255, 111, 97,0.1)', color: '#FF6F61', padding: '4px 10px', borderRadius: '6px', fontWeight: 'bold' }}>
+                             {selectedProduct.discountPercentage}% OFF
+                           </span>
+                         </>
+                       ) : (
+                         <span style={{ fontSize: '1.5rem', fontWeight: '700' }}>₹{selectedProduct.price?.toLocaleString('en-IN')}</span>
+                       )}
                     </div>
                     
                     <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, fontSize: '1.05rem', margin: 0 }}>
@@ -3944,14 +4121,13 @@ function InnerApp() {
                     <div className="action-buttons" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '20px', flexWrap: 'wrap' }}>
                       <button 
                         className="add-cart-btn" 
-                        onClick={() => {
+                        onClick={(e) => {
                           const productWithVariant = {
                             ...selectedProduct,
                             selectedImage: activeDetailImage,
                             image: activeDetailImage
                           };
-                          addToCart(productWithVariant, qty);
-                          addToast(`${selectedProduct.name} (color ${selectedColorIdx + 1}) added to cart`, 'success');
+                          addToCartWithAnim(productWithVariant, qty, e);
                         }}
                       >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ zIndex: 2 }}>
@@ -4006,11 +4182,14 @@ function InnerApp() {
                             <div className="product-card__price-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                               {p.discountPercentage > 0 ? (
                                 <>
-                                  <span className="product-card__price discounted-price" style={{ color: 'var(--gold)', fontWeight: '700' }}>
-                                    ₹{getDiscountedPrice(p).toLocaleString('en-IN')}
-                                  </span>
-                                  <span className="product-card__price original-price" style={{ textDecoration: 'line-through', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
+                                  <span className="product-card__price discounted-price" style={{ color: 'var(--gold)', fontWeight: '800' }}>
                                     ₹{p.price?.toLocaleString('en-IN')}
+                                  </span>
+                                  <span className="product-card__price original-price" style={{ textDecoration: 'line-through', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                    ₹{getMRP(p).toLocaleString('en-IN')}
+                                  </span>
+                                  <span className="discount-badge" style={{ fontSize: '0.72rem', background: 'rgba(255, 111, 97,0.12)', color: '#FF6F61', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>
+                                    {p.discountPercentage}% OFF
                                   </span>
                                 </>
                               ) : (
@@ -4027,64 +4206,33 @@ function InnerApp() {
           </div>
         ) : (
           <>
-        {/* —— HERO —— */}
-        <section id="home" className="hero-section">
-          {/* Floating sparkle dots */}
-          <div className="hero-sparkles" aria-hidden="true">
-            {[...Array(7)].map((_, i) => (
-              <div
-                key={i}
-                className="sparkle-dot"
-                style={{
-                  left: `${10 + i * 13}%`,
-                  top: `${20 + (i % 3) * 25}%`,
-                  animationDelay: `${i * 0.6}s`,
-                  animationDuration: `${3 + i * 0.5}s`,
-                  width: i % 2 === 0 ? '5px' : '8px',
-                  height: i % 2 === 0 ? '5px' : '8px',
-                }}
-              />
-            ))}
-          </div>
+                {/* HERO CATEGORY SLIDER */}
+        <HeroCategorySlider
+          categories={categories.filter(cat => cat.id !== 'offer')}
+          offers={offers}
+          siteSettings={siteSettings}
+          onShopCategory={(catId) => {
+            setSelectedCategory(catId);
+            document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' });
+          }}
+        />
 
-          <div className="hero-copy">
-            <p className="eyebrow">{siteSettings?.heroEyebrow || 'Timeless · Elegant · Royal'}</p>
-            <h1 dangerouslySetInnerHTML={{ __html: (siteSettings?.heroTitle || 'Crafted for <span>Royalty,</span><br />Made for You.') }} />
-            <p className="hero-description">
-              {siteSettings?.heroDescription || 'Discover our premium collection of handcrafted earrings, wood engravings & exquisite key chains — where tradition meets luxury.'}
-            </p>
-            <div className="hero-actions">
-              <a href="#shop" className="primary-btn">Explore Collections ←</a>
-              <a href="#categories" className="secondary-btn"><span>View Categories</span></a>
-            </div>
+        {/* —— VALUE PROPOSITION BAR —— */}
+        <div className="meesho-value-bar">
+          <div className="meesho-value-item">
+            <span className="meesho-value-icon">🪡</span>
+            <span className="meesho-value-text">Hand Crafted</span>
           </div>
-          <div className="hero-visual">
-            <ImageSlider
-              images={siteSettings?.heroClassicImage || ['/images/hero-classic.png']}
-              altText="Luxury gold earrings and wood engraving display"
-              className="hero-image"
-            />
+          <div className="meesho-value-divider" />
+          <div className="meesho-value-item">
+            <span className="meesho-value-icon">🎁</span>
+            <span className="meesho-value-text">Premium Gifts</span>
           </div>
-        </section>
-
-        {/* —— STATS BAR —— */}
-        <div className="stats-bar" aria-label="Store statistics">
-          <div className="stat-item" style={{ animationDelay: '0.1s' }}>
-            <div className="stat-item__number">500+</div>
-            <div className="stat-item__label">Happy Customers</div>
+          <div className="meesho-value-divider" />
+          <div className="meesho-value-item">
+            <span className="meesho-value-icon">🏷️</span>
+            <span className="meesho-value-text">Lowest Prices</span>
           </div>
-          <div className="stat-item" style={{ animationDelay: '0.2s' }}>
-            <div className="stat-item__number">100%</div>
-            <div className="stat-item__label">Handcrafted</div>
-          </div>
-          <div className="stat-item" style={{ animationDelay: '0.3s' }}>
-            <div className="stat-item__number">4.9</div>
-            <div className="stat-item__label">Avg. Rating</div>
-          </div>
-        </div>
-
-        <div className="section-divider" aria-hidden="true">
-          <span className="section-divider-emblem">✦ ⚜ ✦</span>
         </div>
 
         {/* —— SALE BANNER —— */}
@@ -4097,72 +4245,39 @@ function InnerApp() {
           }}
         />
 
-        {/* —— CATEGORIES (Desktop Grid and Mobile Circles) —— */}
-        <section id="categories" className="categories-section" aria-label="Product categories">
-          {/* Section heading */}
+        {/* —— COLLECTIONS — Meesho Arch Style —— */}
+        <section id="categories" className="arch-collections-section" aria-label="Product collections">
           <div className="section-title-wrap">
-            <div className="section-eyebrow">Our Collections</div>
-            <div className="section-main-title">Shop by <span className="gold-text">Category</span></div>
+            <div className="section-eyebrow">Our Exclusive Collections</div>
+            <div className="section-main-title">Shop by <span className="gold-text">Collection</span></div>
           </div>
 
-          {/* Mobile Rounded Circle Bubble Strip */}
-          <div className="mobile-category-bubbles">
+          <div className="arch-collections-row">
+            {/* All */}
             <button
-              className={`category-bubble ${selectedCategory === 'All' ? 'active' : ''}`}
-              onClick={() => {
-                setSelectedCategory('All');
-                setActiveSection('shop');
-              }}
+              className={`arch-col-item ${selectedCollection === 'All' ? 'active' : ''}`}
+              onClick={() => { setSelectedCollection('All'); document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' }); }}
             >
-              All
+              <div className="arch-col-frame arch-all">
+                <img src="/images/col_all.png" alt="All Collections" className="arch-col-img" />
+              </div>
+              <span className="arch-col-label">All</span>
             </button>
-            {offers.length > 0 && (
+
+            {STORE_COLLECTIONS.map(col => (
               <button
-                className={`category-bubble ${selectedCategory === 'Offers' ? 'active' : ''} mobile-hidden`}
+                key={col.id}
+                className={`arch-col-item ${selectedCollection === col.id ? 'active' : ''}`}
                 onClick={() => {
-                  setSelectedCategory('Offers');
-                  setActiveSection('shop');
-                }}
-                style={{ background: 'rgba(201,168,76,0.15)', color: 'var(--gold)', border: '1px solid rgba(201,168,76,0.3)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', justifyContent: 'center' }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg> Offers
-              </button>
-            )}
-            {categories.map(cat => (
-              <button
-                key={cat.id}
-                className={`category-bubble ${selectedCategory === cat.id ? 'active' : ''}`}
-                onClick={() => {
-                  setSelectedCategory(cat.id);
-                  setActiveSection('shop');
+                  setSelectedCollection(col.id);
                   document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' });
                 }}
               >
-                <img className="category-bubble__img" src={cat.image} alt={cat.label} />
-                <span className="category-bubble__label">{cat.label}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Desktop Grid Layout */}
-          <div className="cards-row desktop-only-categories">
-            {categories.map(cat => (
-              <article key={cat.id} className="category-card">
-                <img className="category-card__img" src={cat.image} alt={cat.label} loading="lazy" />
-                <div className="category-card__content">
-                  <div className="category-card__title">{cat.label}</div>
-                  <p className="category-card__desc">{cat.desc}</p>
-                  <button
-                    className="link-btn"
-                    onClick={() => {
-                      setSelectedCategory(cat.id);
-                      document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                  >
-                    Shop Now
-                  </button>
+                <div className={`arch-col-frame arch-${col.id.toLowerCase().replace(/[^a-z]/g, '-')}`}>
+                  <img src={col.image} alt={col.label} className="arch-col-img" />
                 </div>
-              </article>
+                <span className="arch-col-label">{col.id}</span>
+              </button>
             ))}
           </div>
         </section>
@@ -4175,24 +4290,33 @@ function InnerApp() {
         <section id="shop" className="popular-section" aria-label="Popular products">
           <div className="section-heading">
             <div className="section-heading__line" />
-            <span className="section-heading__title">Popular Products</span>
+            <span className="section-heading__title">
+              {selectedCollection !== 'All'
+                ? `${selectedCollection}'s Products`
+                : selectedCategory !== 'All' && selectedCategory !== 'Offers'
+                ? `${selectedCategory}`
+                : 'Popular Products'}
+            </span>
             <div className="section-heading__line" />
-            {selectedCategory !== 'All' && (
-              <button className="clear-filter-btn" onClick={() => setSelectedCategory('All')}>Clear Filter (Show All)</button>
+            {(selectedCategory !== 'All' || selectedCollection !== 'All') && (
+              <button className="clear-filter-btn" onClick={() => { setSelectedCategory('All'); setSelectedCollection('All'); }}>
+                Clear All Filters
+              </button>
             )}
-            <a className="section-heading__action" href="#shop" onClick={(e) => { e.preventDefault(); setSelectedCategory('All'); }}>View All</a>
+            <a className="section-heading__action" href="#shop" onClick={(e) => { e.preventDefault(); setSelectedCategory('All'); setSelectedCollection('All'); }}>View All</a>
           </div>
 
           {/* Filter & Sort Controls Row */}
-          <div className="shop-controls-row">
-            <div className="filter-group">
-              <span className="control-label">Filter:</span>
+          <div className="shop-controls-row" style={{ flexDirection: 'column', gap: '16px', alignItems: 'stretch' }}>
+            {/* Category Filter Row */}
+            <div className="filter-group" style={{ flexWrap: 'wrap' }}>
+              <span className="control-label">Category:</span>
               <button
                 key="All"
                 className={`filter-btn ${selectedCategory === 'All' ? 'active' : ''}`}
                 onClick={() => setSelectedCategory('All')}
               >
-                All
+                All Categories
               </button>
               {offers.length > 0 && (
                 <button
@@ -4210,6 +4334,27 @@ function InnerApp() {
                   onClick={() => setSelectedCategory(cat.id)}
                 >
                   {cat.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Collection Filter Row (Mens, Womens, Kids, Unisex) */}
+            <div className="filter-group" style={{ flexWrap: 'wrap', borderTop: '1px dashed #FCEDD6', paddingTop: '10px' }}>
+              <span className="control-label">Collection:</span>
+              <button
+                key="AllCol"
+                className={`filter-btn ${selectedCollection === 'All' ? 'active' : ''}`}
+                onClick={() => setSelectedCollection('All')}
+              >
+                All Collections
+              </button>
+              {STORE_COLLECTIONS.map(col => (
+                <button
+                  key={col.id}
+                  className={`filter-btn ${selectedCollection === col.id ? 'active' : ''}`}
+                  onClick={() => setSelectedCollection(col.id)}
+                >
+                  {col.id}
                 </button>
               ))}
             </div>
@@ -4242,9 +4387,9 @@ function InnerApp() {
                     <button
                       className={`product-card__wishlist ${isWished(p.id) ? 'active' : ''}`}
                       aria-label={`Toggle wishlist for ${p.name}`}
-                      onClick={e => { e.stopPropagation(); toggleWish(p); }}
+                      onClick={e => { e.stopPropagation(); toggleWish(p, e); }}
                     >
-                      {isWished(p.id) ? '♡' : '♡'}
+                      {isWished(p.id) ? '♥' : '♡'}
                     </button>
                     {p.badge && <span className={`product-card__badge badge--${p.badgeClass || 'new'}`}>{p.badge}</span>}
                   </div>
@@ -4257,9 +4402,9 @@ function InnerApp() {
                             ₹{getDiscountedPrice(p).toLocaleString('en-IN')}
                           </span>
                           <span className="product-card__price original-price" style={{ textDecoration: 'line-through', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-                            ₹{p.price?.toLocaleString('en-IN')}
+                            ₹{getMRP(p).toLocaleString('en-IN')}
                           </span>
-                          <span className="discount-badge" style={{ fontSize: '0.75rem', background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>
+                          <span className="discount-badge" style={{ fontSize: '0.75rem', background: 'rgba(255, 111, 97, 0.12)', color: '#FF6F61', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>
                             {p.discountPercentage}% OFF
                           </span>
                         </>
@@ -4771,11 +4916,49 @@ function InnerApp() {
                       <p style={{ marginTop: '12px', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
                         Need a different courier or custom shipping? Contact our admin for assistance at <a href={`mailto:${siteSettings?.adminEmail || 'parisuulagam@gmail.com'}`} style={{ color: 'var(--gold)' }}>{siteSettings?.adminEmail || 'parisuulagam@gmail.com'}</a> or call <a href={`tel:${siteSettings?.contactPhone || '+919488316728'}`} style={{ color: 'var(--gold)' }}>{siteSettings?.contactPhone || '+91 94883 16728'}</a>.
                       </p>
+                      {/* —— COUPON CODE —— */}
+                      <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
+                        <h4 style={{ marginBottom: '8px', fontSize: '0.9rem' }}>Have a Coupon?</h4>
+                        {appliedCoupon ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(76, 175, 80, 0.08)', border: '1px solid rgba(76, 175, 80, 0.3)', borderRadius: '8px' }}>
+                            <div>
+                              <span style={{ fontWeight: '700', color: '#4CAF50', letterSpacing: '1px' }}>{appliedCoupon.code}</span>
+                              <span style={{ marginLeft: '8px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>— {appliedCoupon.discountPercentage}% OFF (−₹{appliedCoupon.discountAmount.toLocaleString('en-IN')})</span>
+                            </div>
+                            <button type="button" onClick={handleRemoveCoupon} style={{ background: 'none', border: 'none', color: '#e53935', cursor: 'pointer', fontWeight: '600', fontSize: '0.82rem' }}>Remove</button>
+                          </div>
+                        ) : (
+                          <div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <input
+                                type="text"
+                                placeholder="Enter coupon code"
+                                value={couponCode}
+                                onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }}
+                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleApplyCoupon(); } }}
+                                style={{ flex: 1, padding: '9px 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.9rem', letterSpacing: '1px', textTransform: 'uppercase' }}
+                              />
+                              <button type="button" onClick={handleApplyCoupon} disabled={couponLoading || !couponCode.trim()} style={{ padding: '9px 18px', borderRadius: '8px', border: 'none', background: 'var(--gold)', color: '#fff', fontWeight: '600', cursor: 'pointer', opacity: couponLoading || !couponCode.trim() ? 0.5 : 1, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                                {couponLoading ? '...' : 'Apply'}
+                              </button>
+                            </div>
+                            {couponError && <p style={{ color: '#e53935', fontSize: '0.8rem', marginTop: '6px' }}>{couponError}</p>}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* —— DISCOUNT LINE —— */}
+                      {appliedCoupon && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', color: '#4CAF50', fontWeight: '600', fontSize: '0.92rem' }}>
+                          <span>Coupon Discount ({appliedCoupon.discountPercentage}%)</span>
+                          <span>−₹{appliedCoupon.discountAmount.toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border)', fontWeight: '700', fontSize: '1.1rem' }}>
                         <span>Grand Total</span>
                         <span style={{ color: 'var(--gold)' }}>
-                          ₹{(checkoutSubtotal + (selectedShippingMethod ? (activeShippingMethods.find(m => (m._id || m.id) === selectedShippingMethod)?.shippingCharge || 0) : 0) + itemsToCheckout.reduce((sum, item) => sum + (item.shippingCharge || 0) * item.quantity, 0)).toLocaleString('en-IN')}
+                          ₹{Math.max(0, (checkoutSubtotal + (selectedShippingMethod ? (activeShippingMethods.find(m => (m._id || m.id) === selectedShippingMethod)?.shippingCharge || 0) : 0) + itemsToCheckout.reduce((sum, item) => sum + (item.shippingCharge || 0) * item.quantity, 0)) - (appliedCoupon ? appliedCoupon.discountAmount : 0)).toLocaleString('en-IN')}
                         </span>
                       </div>
                     </div>
@@ -4868,7 +5051,7 @@ function InnerApp() {
                       </button>
                     </div>
                   </div>
-                  {regError && <p style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '12px', padding: '10px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)' }}>{regError}</p>}
+                  {regError && <p style={{ color: '#FF6F61', fontSize: '0.85rem', marginBottom: '12px', padding: '10px 12px', background: 'rgba(255, 111, 97,0.08)', borderRadius: '8px', border: '1px solid rgba(255, 111, 97,0.2)' }}>{regError}</p>}
                   <div style={{ textAlign: 'right', marginBottom: '16px' }}>
                     <button type="button" onClick={() => setAccountMode('forgot-step1')} style={{ background: 'none', border: 'none', color: 'var(--gold)', cursor: 'pointer', fontSize: '0.82rem', fontWeight: '600', padding: 0 }}>Forgot Password?</button>
                   </div>
@@ -4900,7 +5083,7 @@ function InnerApp() {
                     <label htmlFor="forgot-email">Email Address *</label>
                     <input id="forgot-email" type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} required placeholder="your@email.com" />
                   </div>
-                  {forgotError && <p style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '12px', padding: '10px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)' }}>{forgotError}</p>}
+                  {forgotError && <p style={{ color: '#FF6F61', fontSize: '0.85rem', marginBottom: '12px', padding: '10px 12px', background: 'rgba(255, 111, 97,0.08)', borderRadius: '8px', border: '1px solid rgba(255, 111, 97,0.2)' }}>{forgotError}</p>}
                   <button type="submit" className="login-btn" disabled={forgotLoading} style={{ marginBottom: '12px' }}>
                     {forgotLoading ? 'Sending Code...' : 'Send Verification Code'}
                   </button>
@@ -4928,7 +5111,7 @@ function InnerApp() {
                     <label htmlFor="forgot-otp">Verification Code *</label>
                     <input id="forgot-otp" type="text" value={forgotOtpCode} onChange={e => setForgotOtpCode(e.target.value.replace(/\D/g, '').slice(0,6))} required placeholder="Enter 6-digit code" style={{ letterSpacing: '4px', textAlign: 'center', fontSize: '1.2rem', fontWeight: 'bold' }} />
                   </div>
-                  {forgotError && <p style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '12px', padding: '10px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)' }}>{forgotError}</p>}
+                  {forgotError && <p style={{ color: '#FF6F61', fontSize: '0.85rem', marginBottom: '12px', padding: '10px 12px', background: 'rgba(255, 111, 97,0.08)', borderRadius: '8px', border: '1px solid rgba(255, 111, 97,0.2)' }}>{forgotError}</p>}
                   <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
                     <button type="button" onClick={() => setAccountMode('forgot-step1')} className="secondary-btn" style={{ flex: 1 }}>Back</button>
                     <button type="submit" className="primary-btn" disabled={forgotLoading} style={{ flex: 2 }}>
@@ -4968,7 +5151,7 @@ function InnerApp() {
                       </button>
                     </div>
                   </div>
-                  {forgotError && <p style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '12px', padding: '10px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)' }}>{forgotError}</p>}
+                  {forgotError && <p style={{ color: '#FF6F61', fontSize: '0.85rem', marginBottom: '12px', padding: '10px 12px', background: 'rgba(255, 111, 97,0.08)', borderRadius: '8px', border: '1px solid rgba(255, 111, 97,0.2)' }}>{forgotError}</p>}
                   <button type="submit" className="primary-btn" disabled={forgotLoading} style={{ width: '100%' }}>
                     {forgotLoading ? 'Resetting Password...' : 'Reset Password'}
                   </button>
@@ -5002,7 +5185,7 @@ function InnerApp() {
                     <label htmlFor="reg-mobile">Mobile Number * (10 digits)</label>
                     <input id="reg-mobile" type="tel" value={regMobile} onChange={e => setRegMobile(e.target.value.replace(/\D/g, '').slice(0,10))} required placeholder="Enter 10-digit number" maxLength={10} />
                   </div>
-                  {regError && <p style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '12px', padding: '10px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)' }}>{regError}</p>}
+                  {regError && <p style={{ color: '#FF6F61', fontSize: '0.85rem', marginBottom: '12px', padding: '10px 12px', background: 'rgba(255, 111, 97,0.08)', borderRadius: '8px', border: '1px solid rgba(255, 111, 97,0.2)' }}>{regError}</p>}
                   <button type="submit" className="login-btn" disabled={regLoading} style={{ marginBottom: '12px' }}>
                     {regLoading ? 'Sending Verification Code...' : 'Send Verification Code ←'}
                   </button>
@@ -5034,7 +5217,7 @@ function InnerApp() {
                     <label htmlFor="reg-otp">Enter 6-Digit Verification Code</label>
                     <input id="reg-otp" type="text" inputMode="numeric" value={regOtpCode} onChange={e => setRegOtpCode(e.target.value.replace(/\D/g, '').slice(0,6))} required placeholder="000000" maxLength={6} style={{ fontSize: '1.4rem', letterSpacing: '0.3em', textAlign: 'center', fontFamily: 'monospace' }} />
                   </div>
-                  {regError && <p style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '12px', padding: '10px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)' }}>{regError}</p>}
+                  {regError && <p style={{ color: '#FF6F61', fontSize: '0.85rem', marginBottom: '12px', padding: '10px 12px', background: 'rgba(255, 111, 97,0.08)', borderRadius: '8px', border: '1px solid rgba(255, 111, 97,0.2)' }}>{regError}</p>}
                   <button type="submit" className="login-btn" disabled={regLoading} style={{ marginBottom: '12px' }}>
                     {regLoading ? 'Verifying...' : 'Verify Email ←'}
                   </button>
@@ -5085,7 +5268,7 @@ function InnerApp() {
                     <label htmlFor="reg-extra">Additional Details <span style={{ color: 'var(--text-muted)', fontWeight: '400' }}>(optional)</span></label>
                     <textarea id="reg-extra" value={regExtraDetails} onChange={e => setRegExtraDetails(e.target.value)} placeholder="Special delivery instructions, alternate contact, etc." rows={2} style={{ width: '100%', padding: '12px 14px', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: '0.92rem', fontFamily: 'inherit', resize: 'vertical', transition: 'border-color var(--transition)' }} />
                   </div>
-                  {regError && <p style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '12px', padding: '10px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)' }}>{regError}</p>}
+                  {regError && <p style={{ color: '#FF6F61', fontSize: '0.85rem', marginBottom: '12px', padding: '10px 12px', background: 'rgba(255, 111, 97,0.08)', borderRadius: '8px', border: '1px solid rgba(255, 111, 97,0.2)' }}>{regError}</p>}
                   <button type="submit" className="login-btn" disabled={regLoading}>
                     {regLoading ? 'Creating Account...' : '& Create My Account'}
                   </button>
@@ -5137,7 +5320,7 @@ function InnerApp() {
                       </button>
                       <button
                         onClick={handleUserLogout}
-                        style={{ flex: 1, padding: '13px', background: 'rgba(239,68,68,0.08)', border: '1.5px solid rgba(239,68,68,0.3)', borderRadius: '10px', color: '#ef4444', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer', letterSpacing: '0.05em' }}
+                        style={{ flex: 1, padding: '13px', background: 'rgba(255, 111, 97,0.08)', border: '1.5px solid rgba(255, 111, 97,0.3)', borderRadius: '10px', color: '#FF6F61', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer', letterSpacing: '0.05em' }}
                       >
                         Sign Out
                       </button>
@@ -5157,7 +5340,7 @@ function InnerApp() {
                       <label htmlFor="profile-extra">Additional Details</label>
                       <textarea id="profile-extra" value={profileExtraDetails} onChange={e => setProfileExtraDetails(e.target.value)} placeholder="Special instructions, notes..." rows={2} style={{ width: '100%', padding: '12px 14px', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: '0.92rem', fontFamily: 'inherit', resize: 'vertical' }} />
                     </div>
-                    {profileError && <p style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '12px', padding: '10px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: '8px' }}>{profileError}</p>}
+                    {profileError && <p style={{ color: '#FF6F61', fontSize: '0.85rem', marginBottom: '12px', padding: '10px 12px', background: 'rgba(255, 111, 97,0.08)', borderRadius: '8px' }}>{profileError}</p>}
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <button type="button" onClick={() => { setProfileEditMode(false); setProfileError(''); }} style={{ flex: 1, padding: '13px', background: 'var(--bg-input)', border: '1.5px solid var(--border)', borderRadius: '10px', color: 'var(--text-primary)', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>
                         Cancel
@@ -5198,6 +5381,16 @@ function InnerApp() {
       )}
 
       <ToastContainer />
+
+      {/* Flying balloon animation — triggers on add-to-cart / add-to-wishlist */}
+      {flyAnim && (
+        <FlyAnimation
+          startX={flyAnim.startX}
+          startY={flyAnim.startY}
+          targetSelector={flyAnim.target}
+          onComplete={() => setFlyAnim(null)}
+        />
+      )}
     </div>
   );
 }

@@ -221,10 +221,10 @@ const OrderDetailsView = ({ order, token, onClose, onViewInvoice, onContactSuppo
             <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '0 0 22px' }} />
 
             {/* STATUS BANNER */}
-            <div style={{ padding: '13px 18px', borderRadius: '10px', marginBottom: '22px', background: isCancelled ? 'rgba(239,68,68,0.08)' : 'rgba(37,99,235,0.06)', border: `1px solid ${isCancelled ? 'rgba(239,68,68,0.2)' : 'rgba(37,99,235,0.18)'}`, display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', flexShrink: 0, background: isCancelled ? '#ef4444' : '#2563eb', boxShadow: `0 0 0 4px ${isCancelled ? 'rgba(239,68,68,0.18)' : 'rgba(37,99,235,0.18)'}` }} />
+            <div style={{ padding: '13px 18px', borderRadius: '10px', marginBottom: '22px', background: isCancelled ? 'rgba(255, 111, 97,0.08)' : 'rgba(37,99,235,0.06)', border: `1px solid ${isCancelled ? 'rgba(255, 111, 97,0.2)' : 'rgba(37,99,235,0.18)'}`, display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', flexShrink: 0, background: isCancelled ? '#FF6F61' : '#2563eb', boxShadow: `0 0 0 4px ${isCancelled ? 'rgba(255, 111, 97,0.18)' : 'rgba(37,99,235,0.18)'}` }} />
               <div>
-                <p style={{ margin: 0, fontWeight: '700', fontSize: '0.92rem', color: isCancelled ? '#ef4444' : '#2563eb' }}>{statusLabel}</p>
+                <p style={{ margin: 0, fontWeight: '700', fontSize: '0.92rem', color: isCancelled ? '#FF6F61' : '#2563eb' }}>{statusLabel}</p>
                 <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>{statusDesc[order.status] || ''}</p>
               </div>
             </div>
@@ -301,7 +301,7 @@ const OrderDetailsView = ({ order, token, onClose, onViewInvoice, onContactSuppo
             <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '24px' }}>Are you sure you want to cancel this order? This action cannot be undone.</p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               <button onClick={() => setActiveModal(null)} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer' }}>Keep Order</button>
-              <button onClick={handleCancelOrder} disabled={loadingAction === 'cancel'} style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: '#ef4444', color: '#fff', cursor: 'pointer', fontWeight: 'bold' }}>
+              <button onClick={handleCancelOrder} disabled={loadingAction === 'cancel'} style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: '#FF6F61', color: '#fff', cursor: 'pointer', fontWeight: 'bold' }}>
                 {loadingAction === 'cancel' ? 'Cancelling...' : 'Yes, Cancel Order'}
               </button>
             </div>

@@ -409,6 +409,21 @@ const siteSettingsSchema = new mongoose.Schema(
 );
 const SiteSettings = mongoose.models.SiteSettings || mongoose.model('SiteSettings', siteSettingsSchema);
 
+// Coupon model
+const couponSchema = new mongoose.Schema(
+  {
+    code: { type: String, required: true, unique: true, uppercase: true, trim: true },
+    targetProduct: { type: String, default: '' }, // product id or '' for generic cart
+    discountPercentage: { type: Number, required: true, min: 1, max: 100 },
+    maxUses: { type: Number, default: 0 }, // 0 = unlimited
+    uses: { type: Number, default: 0 },
+    expiryDate: { type: Date, default: null },
+    isActive: { type: Boolean, default: true }
+  },
+  { timestamps: true }
+);
+const Coupon = mongoose.models.Coupon || mongoose.model('Coupon', couponSchema);
+
 // Initialize Razorpay instance
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -2146,5 +2161,148 @@ app.put('/api/admin/custom-requests/:id/status', requireAdmin, async (req, res) 
     return res.json({ success: true, message: 'Status updated successfully.', data: request });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/* ═══════════ COUPON ROUTES ═══════════ */
+
+// Admin: List all coupons
+app.get('/api/admin/coupons', requireAdmin, async (req, res) => {
+  if (!dbConnected) return res.status(503).json({ success: false, message: 'Database not connected.' });
+  try {
+    const coupons = await Coupon.find().sort({ createdAt: -1 }).lean();
+    return res.json(coupons);
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Admin: Create coupon
+app.post('/api/admin/coupons', requireAdmin, async (req, res) => {
+  if (!dbConnected) return res.status(503).json({ success: false, message: 'Database not connected.' });
+  try {
+    const { code, targetProduct, discountPercentage, maxUses, expiryDate } = req.body;
+    if (!code || !discountPercentage) {
+      return res.status(400).json({ success: false, message: 'Code and discount percentage are required.' });
+    }
+
+    const existing = await Coupon.findOne({ code: code.toUpperCase().trim() });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'A coupon with this code already exists.' });
+    }
+
+    const coupon = new Coupon({
+      code: code.toUpperCase().trim(),
+      targetProduct: targetProduct || '',
+      discountPercentage: parseFloat(discountPercentage),
+      maxUses: maxUses ? parseInt(maxUses) : 0,
+      expiryDate: expiryDate || null
+    });
+    await coupon.save();
+    return res.json({ success: true, message: 'Coupon created successfully.', coupon });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Admin: Update coupon
+app.put('/api/admin/coupons/:id', requireAdmin, async (req, res) => {
+  if (!dbConnected) return res.status(503).json({ success: false, message: 'Database not connected.' });
+  try {
+    const { id } = req.params;
+    const { targetProduct, discountPercentage, maxUses, expiryDate } = req.body;
+
+    const coupon = await Coupon.findById(id);
+    if (!coupon) return res.status(404).json({ success: false, message: 'Coupon not found.' });
+
+    if (targetProduct !== undefined) coupon.targetProduct = targetProduct;
+    if (discountPercentage !== undefined) coupon.discountPercentage = parseFloat(discountPercentage);
+    if (maxUses !== undefined) coupon.maxUses = parseInt(maxUses) || 0;
+    if (expiryDate !== undefined) coupon.expiryDate = expiryDate || null;
+
+    await coupon.save();
+    return res.json({ success: true, message: 'Coupon updated successfully.', coupon });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Admin: Delete coupon
+app.delete('/api/admin/coupons/:id', requireAdmin, async (req, res) => {
+  if (!dbConnected) return res.status(503).json({ success: false, message: 'Database not connected.' });
+  try {
+    const { id } = req.params;
+    const result = await Coupon.findByIdAndDelete(id);
+    if (!result) return res.status(404).json({ success: false, message: 'Coupon not found.' });
+    return res.json({ success: true, message: 'Coupon deleted successfully.' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Public: Validate & apply coupon code (called at checkout)
+app.post('/api/coupons/validate', async (req, res) => {
+  if (!dbConnected) return res.status(503).json({ success: false, message: 'Database not connected.' });
+  try {
+    const { code, cartItems } = req.body; // cartItems: [{ productId, price, quantity }]
+    if (!code) return res.status(400).json({ success: false, message: 'Coupon code is required.' });
+
+    const coupon = await Coupon.findOne({ code: code.toUpperCase().trim(), isActive: true });
+    if (!coupon) {
+      return res.json({ success: false, message: 'Invalid coupon code.' });
+    }
+
+    // Check expiry
+    if (coupon.expiryDate && new Date(coupon.expiryDate) < new Date()) {
+      return res.json({ success: false, message: 'This coupon has expired.' });
+    }
+
+    // Check max uses
+    if (coupon.maxUses > 0 && coupon.uses >= coupon.maxUses) {
+      return res.json({ success: false, message: 'This coupon has reached its usage limit.' });
+    }
+
+    // Calculate discount amount
+    let discountAmount = 0;
+    const items = Array.isArray(cartItems) ? cartItems : [];
+
+    if (coupon.targetProduct) {
+      // Discount only applies to the target product
+      const targetItems = items.filter(item => item.productId === coupon.targetProduct);
+      if (targetItems.length === 0) {
+        return res.json({ success: false, message: 'This coupon is not applicable to any item in your cart.' });
+      }
+      const targetSubtotal = targetItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      discountAmount = Math.round(targetSubtotal * coupon.discountPercentage / 100);
+    } else {
+      // Generic cart — discount on entire subtotal
+      const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      discountAmount = Math.round(subtotal * coupon.discountPercentage / 100);
+    }
+
+    return res.json({
+      success: true,
+      message: `Coupon applied! ${coupon.discountPercentage}% OFF`,
+      couponId: coupon._id,
+      code: coupon.code,
+      discountPercentage: coupon.discountPercentage,
+      discountAmount,
+      targetProduct: coupon.targetProduct
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Increment coupon usage (called after successful checkout)
+app.post('/api/coupons/use', async (req, res) => {
+  if (!dbConnected) return res.json({ success: true });
+  try {
+    const { couponId } = req.body;
+    if (!couponId) return res.json({ success: true });
+    await Coupon.findByIdAndUpdate(couponId, { $inc: { uses: 1 } });
+    return res.json({ success: true });
+  } catch (error) {
+    return res.json({ success: true }); // Non-critical, don't break checkout
   }
 });
