@@ -197,61 +197,46 @@ const InvoiceView = ({ order, onClose }) => {
       <style>{`
         @media (max-width: 600px) {
           .tax-invoice-container {
-            margin: 10px auto !important;
-            border-radius: 4px !important;
             font-size: 11px !important;
           }
           .ti-company-row {
-            flex-direction: column !important;
+            flex-direction: row !important;
             align-items: flex-start !important;
-            gap: 12px !important;
-            padding: 16px 14px !important;
-          }
-          .ti-info-grid {
-            flex-direction: column !important;
-            border: none !important;
             gap: 8px !important;
-            margin-bottom: 12px !important;
-            background: transparent !important;
+            padding: 12px 10px !important;
           }
-          .ti-info-col, .ti-info-col-last {
+          .ti-company-name { font-size: 16px !important; }
+          .ti-info-grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
             border: 1px solid #ccc !important;
-            border-radius: 4px !important;
-            margin-bottom: 0 !important;
-            padding: 8px 10px !important;
-            background: #fafafa !important;
-            width: 100% !important;
-            flex: none !important;
+            gap: 0 !important;
+            margin-bottom: 10px !important;
+          }
+          .ti-info-col {
+            border-right: 1px solid #ccc !important;
+            border-bottom: 1px solid #ccc !important;
+            padding: 7px 8px !important;
+          }
+          .ti-info-col-last {
+            border-bottom: 1px solid #ccc !important;
+            padding: 7px 8px !important;
           }
           .ti-table-wrapper {
-            width: 100% !important;
             overflow-x: auto !important;
             -webkit-overflow-scrolling: touch !important;
-            margin-bottom: 16px !important;
-            border: 1px solid #ddd !important;
-            border-radius: 4px !important;
+            margin-bottom: 12px !important;
           }
-          .ti-table-wrapper table {
-            min-width: 600px !important;
-          }
-          .ti-summary-box {
-            width: 100% !important;
-            margin-left: 0 !important;
-          }
-          .ti-body {
-            padding: 0 14px 14px !important;
-          }
+          .ti-table-wrapper table { min-width: 520px !important; }
+          .ti-summary-box { width: 100% !important; margin-left: 0 !important; }
+          .ti-body { padding: 0 10px 10px !important; }
           .ti-actions {
-            padding: 12px 14px !important;
             flex-wrap: wrap !important;
             justify-content: center !important;
+            padding: 10px !important;
             gap: 8px !important;
           }
-          .ti-actions button {
-            flex: 1 1 auto !important;
-            font-size: 11px !important;
-            padding: 8px 14px !important;
-          }
+          .ti-actions button { flex: 1 1 auto !important; font-size: 11px !important; padding: 8px 12px !important; }
         }
       `}</style>
       <div style={s.container} className="tax-invoice-container">
@@ -271,7 +256,7 @@ const InvoiceView = ({ order, onClose }) => {
             </div>
           </div>
           <div style={s.logoBox}>
-            <img src="/royal_logo.png" alt="Parisu Ulagam" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            <img src="/PU.jpeg" alt="Parisu Ulagam" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
         </div>
 

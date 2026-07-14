@@ -96,14 +96,22 @@ function buildSlides(categories) {
       desc = `Explore our stunning collection of ${key}.`;
     }
 
+    let resolvedImg = cat.image;
+    if (resolvedImg && (resolvedImg.startsWith('file:') || resolvedImg.includes('ownloads'))) {
+      resolvedImg = catImageMap[key] || '/images/hero-classic.png';
+    } else if (!resolvedImg) {
+      resolvedImg = catImageMap[key] || '/images/hero-classic.png';
+    }
+
     return {
       id: cat.id,
       label: key,
-      tagline: tagline,
+      tagline: cat.heroTagline || tagline,
       description: cat.desc || desc,
-      image: cat.image || catImageMap[key] || '/images/hero-classic.png',
-      accentColor: accent,
+      image: resolvedImg,
+      accentColor: cat.heroAccentColor || accent,
       bgGradient: bg,
+      offerText: cat.heroOfferText || ''
     };
   });
 }
@@ -258,9 +266,15 @@ export default function HeroCategorySlider({ categories = [], offers = [], siteS
         {/* ── RIGHT: Copy ── */}
         <div className="hcs-copy-col" key={`copy-${current}`} data-anim={direction}>
 
-          <div className="hcs-offer-pill" style={{ background: slide.accentColor }}>
-            Upto <strong>{discountText}</strong> on your first order
-          </div>
+          {slide.offerText ? (
+            <div className="hcs-offer-pill" style={{ background: slide.accentColor }}>
+              {slide.offerText}
+            </div>
+          ) : (
+            <div className="hcs-offer-pill" style={{ background: slide.accentColor }}>
+              Upto <strong>{discountText}</strong> on your first order
+            </div>
+          )}
 
           <p className="hcs-eyebrow">Parisu Ulagam — Gifted Collections</p>
 

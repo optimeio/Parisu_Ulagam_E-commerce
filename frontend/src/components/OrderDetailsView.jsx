@@ -7,6 +7,7 @@ const OrderDetailsView = ({ order, token, onClose, onViewInvoice, onContactSuppo
   const [activeModal, setActiveModal] = useState(null); // 'cancel', 'return', 'review'
   const [returnReason, setReturnReason] = useState('');
   const [reviewData, setReviewData] = useState({ productId: '', rating: 5, comment: '' });
+  const [reviewImages, setReviewImages] = useState([]);
 
   if (!order) return null;
 
@@ -79,10 +80,18 @@ const OrderDetailsView = ({ order, token, onClose, onViewInvoice, onContactSuppo
     e.preventDefault();
     setLoadingAction('review');
     try {
+      const formData = new FormData();
+      formData.append('productId', reviewData.productId);
+      formData.append('rating', reviewData.rating);
+      formData.append('comment', reviewData.comment);
+      reviewImages.forEach(img => {
+        formData.append('images', img);
+      });
+
       const res = await fetch('/api/users/reviews', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-token': token },
-        body: JSON.stringify(reviewData)
+        headers: { 'x-user-token': token },
+        body: formData
       });
       const data = await res.json();
       if (res.status === 401 && onLogout) {
@@ -100,6 +109,7 @@ const OrderDetailsView = ({ order, token, onClose, onViewInvoice, onContactSuppo
     setLoadingAction(null);
     setActiveModal(null);
     setReviewData({ productId: '', rating: 5, comment: '' });
+    setReviewImages([]);
   };
 
   const handleShare = async () => {
@@ -140,7 +150,8 @@ const OrderDetailsView = ({ order, token, onClose, onViewInvoice, onContactSuppo
       label: 'Write a product review', 
       action: () => {
         if (order.status === 'Delivered') {
-          setReviewData({ productId: order.items[0]?.productId || '', rating: 5, comment: '' });
+          setReviewData({ productId: order.items[0]?.id || order.items[0]?._id || '', rating: 5, comment: '' });
+          setReviewImages([]);
           setActiveModal('review');
         } else {
           addToast('You can only write a review after the item has been delivered.', 'error');
@@ -350,7 +361,7 @@ const OrderDetailsView = ({ order, token, onClose, onViewInvoice, onContactSuppo
                 >
                   <option value="">-- Choose a product --</option>
                   {order.items.map((it, i) => (
-                    <option key={i} value={it.productId}>{it.name}</option>
+                    <option key={i} value={it.id || it._id}>{it.name}</option>
                   ))}
                 </select>
               </div>
@@ -373,6 +384,70 @@ const OrderDetailsView = ({ order, token, onClose, onViewInvoice, onContactSuppo
                   placeholder="What did you like or dislike?"
                   style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                 ></textarea>
+              </div>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '8px', fontWeight: '600' }}>Add Images (Optional)</label>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  {[0, 1, 2].map(index => {
+                    const file = reviewImages[index];
+                    const previewUrl = file ? URL.createObjectURL(file) : null;
+                    return (
+                      <div 
+                        key={index}
+                        style={{ 
+                          width: '80px', height: '80px', 
+                          border: file ? 'none' : '2px dashed var(--border)', 
+                          borderRadius: '8px', 
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                          cursor: 'pointer', position: 'relative', overflow: 'hidden',
+                          background: file ? 'transparent' : 'var(--bg-secondary)'
+                        }}
+                        onClick={() => document.getElementById(`review-img-${index}`).click()}
+                      >
+                        {previewUrl ? (
+                          <>
+                            <img src={previewUrl} alt={`Upload ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <button 
+                              type="button" 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                const newImgs = [...reviewImages]; 
+                                newImgs.splice(index, 1); 
+                                setReviewImages(newImgs); 
+                                // Reset the input value so the same file can be selected again
+                                document.getElementById(`review-img-${index}`).value = '';
+                              }} 
+                              style={{ 
+                                position: 'absolute', top: 4, right: 4, 
+                                background: 'rgba(0,0,0,0.6)', color: 'white', 
+                                border: 'none', borderRadius: '50%', 
+                                width: '20px', height: '20px', 
+                                fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                cursor: 'pointer'
+                              }}
+                            >✕</button>
+                          </>
+                        ) : (
+                          <span style={{ fontSize: '24px', color: 'var(--text-muted)' }}>+</span>
+                        )}
+                        <input 
+                          id={`review-img-${index}`} 
+                          type="file" 
+                          accept="image/*" 
+                          style={{ display: 'none' }}
+                          onChange={e => {
+                            if (e.target.files && e.target.files[0]) {
+                              const newImgs = [...reviewImages];
+                              newImgs[index] = e.target.files[0];
+                              setReviewImages(newImgs.filter(Boolean));
+                            }
+                          }} 
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '8px' }}>You can upload up to 3 images.</small>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                 <button type="button" onClick={() => setActiveModal(null)} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer' }}>Cancel</button>

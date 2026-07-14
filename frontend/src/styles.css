@@ -356,8 +356,8 @@ img { display: block; max-width: 100%; height: auto; transition: transform var(-
 }
 
 .brand__logo {
-  width: 48px;
-  height: 48px;
+  width: 68px;
+  height: 68px;
   border-radius: var(--radius-full);
   border: 2px solid var(--gold);
   display: flex;
@@ -365,14 +365,15 @@ img { display: block; max-width: 100%; height: auto; transition: transform var(-
   justify-content: center;
   font-family: 'Cormorant Garamond', serif;
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1.5rem;
   color: var(--text-primary);
   background: var(--gold-gradient);
   background-size: 200% auto;
   color: #fff;
   flex-shrink: 0;
   animation: goldGlow 4s ease-in-out infinite;
-  box-shadow: 0 0 12px rgba(201,168,76,0.35);
+  overflow: hidden;
+  box-shadow: 0 0 16px rgba(201,168,76,0.4);
 }
 
 .brand__name {
@@ -578,7 +579,7 @@ img { display: block; max-width: 100%; height: auto; transition: transform var(-
 
 .eyebrow::before,
 .eyebrow::after {
-  content: 'Γ£ª';
+  content: '✦';
   font-size: 0.6rem;
   opacity: 0.7;
   animation: sparkle 2s ease-in-out infinite;
@@ -843,7 +844,7 @@ img { display: block; max-width: 100%; height: auto; transition: transform var(-
 
 .section-eyebrow::before,
 .section-eyebrow::after {
-  content: 'Γ£ª';
+  content: '✦';
   opacity: 0.4;
 }
 
@@ -3177,7 +3178,7 @@ img { display: block; max-width: 100%; height: auto; transition: transform var(-
 
   .brand { order: 1; flex: 1; }
   .brand__name { font-size: 1.1rem; }
-  .brand__logo { width: 40px; height: 40px; font-size: 0.9rem; }
+  .brand__logo { width: 54px; height: 54px; font-size: 1.2rem; }
   .brand__tag { font-size: 0.6rem; }
 
   /* Show hamburger */
@@ -3291,18 +3292,19 @@ img { display: block; max-width: 100%; height: auto; transition: transform var(-
   /* Drawer logo */
   .menu-drawer-logo {
     display: flex;
-    width: 52px; height: 52px;
+    width: 90px; height: 90px;
     border-radius: var(--radius-full);
     border: 2px solid var(--gold);
     align-items: center; justify-content: center;
     font-family: 'Cormorant Garamond', serif;
-    font-weight: 700; font-size: 1.2rem;
+    font-weight: 700; font-size: 1.6rem;
     color: #fff;
     background: var(--gold-gradient);
     background-size: 200% auto;
     animation: shimmer 4s linear infinite;
     margin-bottom: 20px; flex-shrink: 0;
-    box-shadow: 0 4px 14px rgba(201,168,76,0.4);
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(201,168,76,0.5);
   }
 
   .menu-drawer-divider {
@@ -3757,7 +3759,7 @@ img { display: block; max-width: 100%; height: auto; transition: transform var(-
   }
 
   .brand__name { font-size: 0.95rem; }
-  .brand__logo { width: 36px; height: 36px; font-size: 0.82rem; }
+  .brand__logo { width: 48px; height: 48px; font-size: 1rem; }
   .brand__tag { display: none; }
 
   .hero-copy h1 { font-size: 1.55rem; }
@@ -4145,13 +4147,15 @@ input[type="password"] {
 
 
 /* ===== HERO CATEGORY SLIDER (Restored) ===== */
+
 .hero-slider-section {
   width: 100%;
-  min-height: 520px;
-  max-height: none;
+  max-width: 1900px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
-  padding: 40px 20px;
+  justify-content: center;
+  padding: 28px 40px;
   color: #ffffff;
 }
 
@@ -4160,29 +4164,31 @@ input[type="password"] {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  max-width: 1200px;
+  max-width: 1300px;
   margin: 0 auto;
-  gap: 60px;
+  gap: 48px;
   width: 100%;
 }
 
 .hcs-image-col {
-  flex: 1;
+  flex: 0 0 auto;
+  width: 42%;
+  max-width: 440px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
+  gap: 12px;
 }
 
 .hcs-image-frame {
   position: relative;
   width: 100%;
-  max-width: 400px;
-  aspect-ratio: 3/3;
+  aspect-ratio: 4/3;
   border-radius: var(--radius-lg);
   box-shadow: 0 16px 40px rgba(0,0,0,0.4);
   background: rgba(255,255,255,0.08);
   border: 1.5px solid rgba(255,255,255,0.1);
+  overflow: hidden;
 }
 
 .hcs-main-img {
@@ -4220,16 +4226,16 @@ input[type="password"] {
 
 .hcs-thumbs {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   justify-content: center;
   width: 100%;
-  padding: 8px;
+  padding: 4px 0;
 }
 
 .hcs-thumb-btn {
-  width: 64px;
-  height: 64px;
-  border-radius: 12px;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
   border: 2px solid transparent;
   padding: 2px;
   background: transparent;
@@ -4260,7 +4266,7 @@ input[type="password"] {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 
 .hcs-offer-pill {
@@ -4274,8 +4280,8 @@ input[type="password"] {
 }
 
 .hcs-eyebrow {
-  font-size: 0.9rem;
-  letter-spacing: 0.15em;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   opacity: 0.8;
   margin: 0;
@@ -4283,7 +4289,7 @@ input[type="password"] {
 
 .hcs-title {
   font-family: 'Calibri', 'Segoe UI', sans-serif !important;
-  font-size: clamp(2.5rem, 4vw, 3.8rem);
+  font-size: clamp(2rem, 3.2vw, 3rem);
   font-weight: 800;
   line-height: 1.1;
   margin: 0;
@@ -4291,18 +4297,18 @@ input[type="password"] {
 
 .hcs-category-name {
   font-family: 'Calibri', 'Segoe UI', sans-serif !important;
-  font-size: clamp(2rem, 3vw, 2.8rem);
+  font-size: clamp(1.5rem, 2.4vw, 2.2rem);
   font-weight: 700;
   margin: 0;
   text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
 .hcs-desc {
-  font-size: 1.15rem;
-  line-height: 1.6;
+  font-size: 1rem;
+  line-height: 1.5;
   opacity: 0.9;
   max-width: 480px;
-  margin: 0 0 12px 0;
+  margin: 0;
 }
 
 .hcs-actions {
@@ -4313,12 +4319,12 @@ input[type="password"] {
 
 .hcs-cta-primary,
 .hcs-cta-secondary {
-  padding: 14px 32px;
+  padding: 12px 28px;
   border-radius: 30px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   transition: all var(--transition);
   color: #fff;
 }
@@ -4346,16 +4352,16 @@ input[type="password"] {
 .hcs-nav {
   display: flex;
   align-items: center;
-  gap: 24px;
-  margin-top: 24px;
+  gap: 16px;
+  margin-top: 8px;
 }
 
 .hcs-nav-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: rgba(255,255,255,0.15);
   color: #fff;
@@ -4395,7 +4401,7 @@ input[type="password"] {
   height: 3px;
   background: rgba(255,255,255,0.15);
   border-radius: 2px;
-  margin-top: 32px;
+  margin-top: 10px;
   overflow: hidden;
 }
 
@@ -4550,6 +4556,10 @@ input[type="password"] {
   .hcs-inner {
     flex-direction: column;
     gap: 20px;
+  }
+  .hcs-image-col {
+    width: 100%;
+    max-width: 100%;
   }
   .hcs-image-frame {
     max-width: 100%;
@@ -4777,4 +4787,77 @@ input[type="password"] {
     line-height: 1.2;
     margin-top: 0;
   }
+}
+
+/* ===== ANIMATED BACKGROUND ORBS (Centering Fix) ===== */
+.hcs-bg-orb {
+  position: absolute;
+  width: 350px;
+  height: 350px;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.28;
+  pointer-events: none;
+  transition: background 0.8s ease-in-out;
+}
+
+.hcs-orb-1 {
+  top: -80px;
+  left: -80px;
+}
+
+.hcs-orb-2 {
+  bottom: -80px;
+  right: -80px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ===== FOOTER SOCIAL LINKS ===== */
+.footer-social-links {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.footer-social-btn {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  border: 1.2px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.footer-social-btn svg {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.footer-social-btn:hover {
+  transform: translateY(-4px) scale(1.08) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  color: #ffffff;
+}
+
+.footer-social-btn:hover svg {
+  transform: scale(1.12);
+}
+
+.footer-social-btn.instagram:hover {
+  background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285aeb 90%);
+  border-color: transparent;
+}
+
+.footer-social-btn.facebook:hover {
+  background: #1877f2;
+  border-color: transparent;
+}
+
+.footer-social-btn.youtube:hover {
+  background: #ff0000;
+  border-color: transparent;
 }

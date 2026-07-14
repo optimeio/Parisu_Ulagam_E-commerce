@@ -190,6 +190,7 @@ function InnerApp() {
   const [adminReviews, setAdminReviews] = useState([]);
   const [adminCustomRequests, setAdminCustomRequests] = useState([]);
   const [selectedAdminCustomer, setSelectedAdminCustomer] = useState(null);
+  const [selectedAdminReview, setSelectedAdminReview] = useState(null);
   const [offers, setOffers] = useState([]);
   const [siteSettings, setSiteSettings] = useState(null);
 
@@ -244,7 +245,18 @@ function InnerApp() {
       if (r.ok) {
         const data = await r.json();
         if (Array.isArray(data) && data.length > 0) {
-          setCategories(data);
+          const catImageMap = {
+            'Wood Engravings': '/images/woodbox.png',
+            'Earrings': '/images/earrings.png',
+            'Key Chains': '/images/keychain.png',
+          };
+          const sanitized = data.map(cat => {
+            if (cat.image && (cat.image.startsWith('file:') || cat.image.includes('ownloads'))) {
+              cat.image = catImageMap[cat.label || cat.id] || '/images/hero-classic.png';
+            }
+            return cat;
+          });
+          setCategories(sanitized);
         }
       }
     } catch (err) {
@@ -470,6 +482,9 @@ function InnerApp() {
   const [categoryFormOpen, setCategoryFormOpen] = useState(false);
   const [categoryLabel, setCategoryLabel] = useState('');
   const [categoryDesc, setCategoryDesc] = useState('');
+  const [categoryHeroTagline, setCategoryHeroTagline] = useState('');
+  const [categoryHeroAccentColor, setCategoryHeroAccentColor] = useState('');
+  const [categoryHeroOfferText, setCategoryHeroOfferText] = useState('');
   const [categoryImageFile, setCategoryImageFile] = useState(null);
   const [categoryImageUrl, setCategoryImageUrl] = useState('');
   const [deleteConfirmCategory, setDeleteConfirmCategory] = useState(null);
@@ -491,6 +506,7 @@ function InnerApp() {
   const [selectedShippingMethod, setSelectedShippingMethod] = useState(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutAddress, setCheckoutAddress] = useState('');
+  const [checkoutAddressIdx, setCheckoutAddressIdx] = useState(0);
   const [checkoutPhone, setCheckoutPhone] = useState('');
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null); // { couponId, code, discountAmount, discountPercentage }
@@ -827,6 +843,9 @@ function InnerApp() {
   const resetCategoryForm = () => {
     setCategoryLabel('');
     setCategoryDesc('');
+    setCategoryHeroTagline('');
+    setCategoryHeroAccentColor('');
+    setCategoryHeroOfferText('');
     setCategoryImageFile(null);
     setCategoryImageUrl('');
     setEditingCategory(null);
@@ -836,6 +855,9 @@ function InnerApp() {
     setEditingCategory(cat);
     setCategoryLabel(cat.label || '');
     setCategoryDesc(cat.desc || '');
+    setCategoryHeroTagline(cat.heroTagline || '');
+    setCategoryHeroAccentColor(cat.heroAccentColor || '');
+    setCategoryHeroOfferText(cat.heroOfferText || '');
     setCategoryImageFile(null);
     setCategoryImageUrl(cat.image || '');
     setCategoryFormOpen(true);
@@ -851,6 +873,9 @@ function InnerApp() {
       const formData = new FormData();
       formData.append('label', categoryLabel);
       formData.append('desc', categoryDesc);
+      formData.append('heroTagline', categoryHeroTagline);
+      formData.append('heroAccentColor', categoryHeroAccentColor);
+      formData.append('heroOfferText', categoryHeroOfferText);
       if (categoryImageFile) {
         formData.append('image', categoryImageFile);
       } else {
@@ -983,6 +1008,52 @@ function InnerApp() {
   const [activeSection, setActiveSection] = useState('home');
   const [adminActiveTab, setAdminActiveTab] = useState('dashboard');
 
+  /* —— Site Settings Controlled Form State —— */
+  const [ssHeroEyebrow, setSsHeroEyebrow] = useState('Timeless · Elegant · Royal');
+  const [ssHeroTitle, setSsHeroTitle] = useState('Crafted for <span>Royalty,</span><br />Made for You.');
+  const [ssHeroDescription, setSsHeroDescription] = useState('Discover our premium collection of handcrafted earrings, wood engravings & exquisite key chains — where tradition meets luxury.');
+  const [ssBannerEnabled, setSsBannerEnabled] = useState('true');
+  const [ssBannerTitle, setSsBannerTitle] = useState('Royal Collection Sale');
+  const [ssBannerDiscount, setSsBannerDiscount] = useState('');
+  const [ssBannerExtraDiscount, setSsBannerExtraDiscount] = useState('Limited Time Only');
+  const [ssBannerDescription, setSsBannerDescription] = useState('Discover exquisite craftsmanship at unprecedented prices. Elevate your elegance today.');
+  const [ssAboutTitle, setSsAboutTitle] = useState('Where Tradition<br/>Meets <span class="gold-text">Elegance</span>');
+  const [ssAboutDescription, setSsAboutDescription] = useState('Born from a passion for timeless artistry, Parisu Ulagam is a celebration of heritage craftsmanship and modern luxury. Every piece in our collection tells a story — of skilled artisans, precious materials, and designs that transcend generations.');
+  const [ssContactPhone, setSsContactPhone] = useState('+91 94883 16728');
+  const [ssContactEmail, setSsContactEmail] = useState('thesmgroups@gmail.com');
+  const [ssContactAddress, setSsContactAddress] = useState('IInd Floor, OM Shiva Towers, 259-B,<br/>Advaitha Ashram Rd, Fairlands, Salem - 636004');
+  const [ssAboutAccentNum, setSsAboutAccentNum] = useState('5+');
+  const [ssAboutAccentLabel, setSsAboutAccentLabel] = useState('Years of Craftsmanship');
+  const [ssHeroClassicImages, setSsHeroClassicImages] = useState(['/images/hero-classic.png']);
+  const [ssBannerImageClassic, setSsBannerImageClassic] = useState(['/images/offer_classic.png']);
+  const [ssAboutImage, setSsAboutImage] = useState(['/images/toy-classic.png']);
+  const [ssSettingsLoaded, setSsSettingsLoaded] = useState(false);
+
+  // Sync site settings state when siteSettings loads from API
+  useEffect(() => {
+    if (siteSettings) {
+      setSsHeroEyebrow(siteSettings.heroEyebrow || 'Timeless · Elegant · Royal');
+      setSsHeroTitle(siteSettings.heroTitle || 'Crafted for <span>Royalty,</span><br />Made for You.');
+      setSsHeroDescription(siteSettings.heroDescription || 'Discover our premium collection of handcrafted earrings, wood engravings & exquisite key chains — where tradition meets luxury.');
+      setSsBannerEnabled(siteSettings.bannerEnabled !== false ? 'true' : 'false');
+      setSsBannerTitle(siteSettings.bannerTitle || 'Royal Collection Sale');
+      setSsBannerDiscount(siteSettings.bannerDiscount || '');
+      setSsBannerExtraDiscount(siteSettings.bannerExtraDiscount || 'Limited Time Only');
+      setSsBannerDescription(siteSettings.bannerDescription || 'Discover exquisite craftsmanship at unprecedented prices. Elevate your elegance today.');
+      setSsAboutTitle(siteSettings.aboutTitle || 'Where Tradition<br/>Meets <span class="gold-text">Elegance</span>');
+      setSsAboutDescription(siteSettings.aboutDescription || 'Born from a passion for timeless artistry, Parisu Ulagam is a celebration of heritage craftsmanship and modern luxury. Every piece in our collection tells a story — of skilled artisans, precious materials, and designs that transcend generations.');
+      setSsContactPhone(siteSettings.contactPhone || '+91 94883 16728');
+      setSsContactEmail(siteSettings.contactEmail || 'thesmgroups@gmail.com');
+      setSsContactAddress(siteSettings.contactAddress || 'IInd Floor, OM Shiva Towers, 259-B,<br/>Advaitha Ashram Rd, Fairlands, Salem - 636004');
+      setSsAboutAccentNum(siteSettings.aboutAccentNum || '5+');
+      setSsAboutAccentLabel(siteSettings.aboutAccentLabel || 'Years of Craftsmanship');
+      if (siteSettings.heroClassicImage && siteSettings.heroClassicImage.length > 0) setSsHeroClassicImages(siteSettings.heroClassicImage);
+      if (siteSettings.bannerImageClassic && siteSettings.bannerImageClassic.length > 0) setSsBannerImageClassic(siteSettings.bannerImageClassic);
+      if (siteSettings.aboutImage && siteSettings.aboutImage.length > 0) setSsAboutImage(siteSettings.aboutImage);
+      setSsSettingsLoaded(true);
+    }
+  }, [siteSettings]);
+
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
@@ -1058,6 +1129,8 @@ function InnerApp() {
     setAccountOpen(false);
     setRegError('');
     setForgotError('');
+    setLoginEmail('');
+    setLoginPassword('');
   };
 
   // Sync wishlist to backend whenever it changes (if user is logged in)
@@ -1338,7 +1411,35 @@ function InnerApp() {
 
   const handleSiteSettingsSubmit = async (e) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
+    const formData = new FormData();
+    // Text fields from controlled state
+    formData.append('heroEyebrow', ssHeroEyebrow);
+    formData.append('heroTitle', ssHeroTitle);
+    formData.append('heroDescription', ssHeroDescription);
+    formData.append('bannerEnabled', ssBannerEnabled);
+    formData.append('bannerTitle', ssBannerTitle);
+    formData.append('bannerDiscount', ssBannerDiscount);
+    formData.append('bannerExtraDiscount', ssBannerExtraDiscount);
+    formData.append('bannerDescription', ssBannerDescription);
+    formData.append('aboutTitle', ssAboutTitle);
+    formData.append('aboutDescription', ssAboutDescription);
+    formData.append('contactPhone', ssContactPhone);
+    formData.append('contactEmail', ssContactEmail);
+    formData.append('contactAddress', ssContactAddress);
+    formData.append('aboutAccentNum', ssAboutAccentNum);
+    formData.append('aboutAccentLabel', ssAboutAccentLabel);
+    // Image arrays (existing URLs as JSON)
+    formData.append('heroClassicImage', JSON.stringify(ssHeroClassicImages));
+    formData.append('bannerImageClassic', JSON.stringify(ssBannerImageClassic));
+    formData.append('aboutImage', JSON.stringify(ssAboutImage));
+    // New image file uploads from the form element
+    const form = e.target;
+    const heroClassicImageFilesInput = form.querySelector('input[name="heroClassicImageFiles"]');
+    const bannerImageClassicFilesInput = form.querySelector('input[name="bannerImageClassicFiles"]');
+    const aboutImageFilesInput = form.querySelector('input[name="aboutImageFiles"]');
+    if (heroClassicImageFilesInput?.files) Array.from(heroClassicImageFilesInput.files).forEach(f => formData.append('heroClassicImageFiles', f));
+    if (bannerImageClassicFilesInput?.files) Array.from(bannerImageClassicFilesInput.files).forEach(f => formData.append('bannerImageClassicFiles', f));
+    if (aboutImageFilesInput?.files) Array.from(aboutImageFilesInput.files).forEach(f => formData.append('aboutImageFiles', f));
     try {
       const r = await fetch('/api/admin/site-settings', {
         method: 'PUT',
@@ -1403,7 +1504,7 @@ function InnerApp() {
       const r = await fetch('/api/users/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: regEmail, password: regPassword })
+        body: JSON.stringify({ email: loginEmail, password: loginPassword })
       });
       const data = await r.json();
       if (data.success) {
@@ -1832,7 +1933,7 @@ function InnerApp() {
       <div className="admin-layout">
         <aside className="admin-sidebar">
           <div className="admin-sidebar-header">
-            <div className="brand__logo" style={{width:'40px', height:'40px', fontSize:'0.9rem'}}><img src="/royal_logo.png" alt="Parisu Ulagam" style={{width:'100%', height:'100%'}}/></div>
+            <div className="brand__logo" style={{width:'56px', height:'56px', fontSize:'1.2rem', overflow:'hidden'}}><img src="/PU.jpeg" alt="Parisu Ulagam" style={{width:'100%', height:'100%', objectFit:'cover'}}/></div>
             <div className="brand__name" style={{fontSize:'1.1rem'}}>Admin Portal</div>
           </div>
           <nav className="admin-sidebar-nav">
@@ -2169,6 +2270,7 @@ function InnerApp() {
                       <th>Image</th>
                       <th>Category Label</th>
                       <th>Description</th>
+                      <th>Hero Accent</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -2184,6 +2286,16 @@ function InnerApp() {
                         </td>
                         <td>
                           <div style={{color:'var(--text-muted)'}}>{c.desc || '—'}</div>
+                        </td>
+                        <td>
+                          {c.heroAccentColor ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: c.heroAccentColor, border: '1px solid var(--border)' }}></div>
+                              <span style={{ fontSize: '0.85rem' }}>{c.heroAccentColor}</span>
+                            </div>
+                          ) : (
+                            <span style={{color:'var(--text-muted)', fontSize: '0.85rem'}}>Default</span>
+                          )}
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: '8px' }}>
@@ -2760,18 +2872,23 @@ function InnerApp() {
                       <td style={{ maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.comment || '-'}</td>
                       <td>{new Date(r.createdAt).toLocaleDateString()}</td>
                       <td>
-                        <button className="icon-btn delete-btn" title="Delete Review" onClick={async () => {
-                          if(confirm('Are you sure you want to delete this review?')) {
-                            try {
-                              const res = await fetch(`/api/admin/reviews/${r._id}`, {
-                                method: 'DELETE', headers: { 'x-admin-token': adminToken }
-                              });
-                              if (res.ok) fetchAdminReviews(adminToken);
-                            } catch(e) {}
-                          }
-                        }}>
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button className="icon-btn" title="View Full Review" onClick={() => setSelectedAdminReview(r)}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                          </button>
+                          <button className="icon-btn delete-btn" title="Delete Review" onClick={async () => {
+                            if(confirm('Are you sure you want to delete this review?')) {
+                              try {
+                                const res = await fetch(`/api/admin/reviews/${r._id}`, {
+                                  method: 'DELETE', headers: { 'x-admin-token': adminToken }
+                                });
+                                if (res.ok) fetchAdminReviews(adminToken);
+                              } catch(e) {}
+                            }
+                          }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -2833,6 +2950,42 @@ function InnerApp() {
         )}
 
         {/* CUSTOMER DETAILS MODAL */}
+        {/* Admin Review Details Modal */}
+        {selectedAdminReview && (
+          <div className="admin-modal-overlay" onClick={(e) => { if (e.target.className === 'admin-modal-overlay') setSelectedAdminReview(null); }}>
+            <div className="admin-modal-card" style={{ maxWidth: '600px', width: '90%' }}>
+              <div className="admin-modal-header">
+                <h3 className="admin-modal-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>Review Details</h3>
+                <button className="modal-close" onClick={() => setSelectedAdminReview(null)}>✕</button>
+              </div>
+              <div className="admin-modal-body" style={{ maxHeight: '70vh', overflowY: 'auto', padding: '24px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                  <div><span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Customer Email</span><div style={{ fontWeight: '600', wordBreak: 'break-all' }}>{selectedAdminReview.userEmail}</div></div>
+                  <div><span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Product ID</span><div style={{ fontWeight: '600' }}>{selectedAdminReview.productId}</div></div>
+                  <div><span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Rating</span><div style={{ fontWeight: '600', color: '#eab308' }}>{'★'.repeat(selectedAdminReview.rating)}</div></div>
+                  <div><span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Date</span><div style={{ fontWeight: '600' }}>{new Date(selectedAdminReview.createdAt).toLocaleDateString('en-IN')}</div></div>
+                </div>
+                <div style={{ marginBottom: '20px' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Comment</span>
+                  <p style={{ margin: '5px 0 0', background: 'var(--bg-secondary)', padding: '15px', borderRadius: '8px', lineHeight: '1.5' }}>{selectedAdminReview.comment || 'No comment provided.'}</p>
+                </div>
+                {selectedAdminReview.images && selectedAdminReview.images.length > 0 && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Attached Images</span>
+                    <div style={{ display: 'flex', gap: '15px', marginTop: '10px', flexWrap: 'wrap' }}>
+                      {selectedAdminReview.images.map((img, i) => (
+                        <a key={i} href={img} target="_blank" rel="noopener noreferrer" style={{ display: 'block', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                          <img src={img} alt={`Review Image ${i+1}`} style={{ width: '120px', height: '120px', objectFit: 'cover', display: 'block' }} />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {selectedAdminCustomer && (
           <div className="admin-modal-overlay">
             <div className="admin-modal-card" style={{ maxWidth: '850px', width: '90%' }}>
@@ -3109,11 +3262,20 @@ function InnerApp() {
 
         {adminActiveTab === 'siteSettings' && (
           <div className="admin-card" style={{ maxWidth: '800px', margin: '0 auto 40px auto' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              Edit Homepage Hero & Sale Banner
+            <h3 style={{ marginTop: 0, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              Edit Homepage Hero &amp; Sale Banner
             </h3>
+            <div style={{ padding: '12px', background: 'rgba(39, 174, 96, 0.1)', border: '1px solid rgba(39, 174, 96, 0.3)', borderRadius: '8px', marginBottom: '20px' }}>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                <strong>Note:</strong> The homepage hero slider is automatically generated from your Categories. 
+                To change hero slides, please edit the specific category in the <button className="text-btn" style={{ color: 'var(--gold)', textDecoration: 'underline', padding: 0 }} onClick={() => setAdminActiveTab('categories')}>Category Management</button> tab to set its Hero Tagline, Offer Text, and Accent Color.
+              </p>
+            </div>
+            {!ssSettingsLoaded && siteSettings === null && (
+              <p style={{ color: 'var(--text-muted)', marginBottom: '16px', fontSize: '0.9rem' }}>Loading current settings from database…</p>
+            )}
             <form onSubmit={handleSiteSettingsSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              
+
               {/* --- HERO SECTION SETTINGS --- */}
               <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '20px' }}>
                 <h4 style={{ color: 'var(--gold)', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -3122,20 +3284,29 @@ function InnerApp() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                   <div className="admin-form-group">
                     <label>Hero Eyebrow</label>
-                    <input type="text" name="heroEyebrow" defaultValue={siteSettings?.heroEyebrow || 'Timeless · Elegant · Royal'} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                    <input type="text" value={ssHeroEyebrow} onChange={e => setSsHeroEyebrow(e.target.value)} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
                   </div>
                   <div className="admin-form-group">
                     <label>Hero Title (HTML supported)</label>
-                    <input type="text" name="heroTitle" defaultValue={siteSettings?.heroTitle || 'Crafted for <span>Royalty,</span><br />Made for You.'} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                    <input type="text" value={ssHeroTitle} onChange={e => setSsHeroTitle(e.target.value)} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
                   </div>
                 </div>
                 <div className="admin-form-group" style={{ marginTop: '15px' }}>
                   <label>Hero Description</label>
-                  <textarea name="heroDescription" rows={3} defaultValue={siteSettings?.heroDescription || 'Discover our premium collection of handcrafted earrings, wood engravings & exquisite key chains — where tradition meets luxury.'} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%', resize: 'vertical' }}></textarea>
+                  <textarea rows={3} value={ssHeroDescription} onChange={e => setSsHeroDescription(e.target.value)} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%', resize: 'vertical' }}></textarea>
                 </div>
                 <div className="admin-form-group" style={{ marginTop: '15px' }}>
                   <label>Hero Images</label>
-                  <ImageArrayUpload name="heroClassicImage" initialImages={siteSettings?.heroClassicImage || ['/images/hero-classic.png']} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {ssHeroClassicImages.map((img, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <img src={img} alt={`Hero ${idx + 1}`} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} />
+                        <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', flex: 1, wordBreak: 'break-all' }}>{img}</span>
+                        <button type="button" onClick={() => setSsHeroClassicImages(ssHeroClassicImages.filter((_, i) => i !== idx))} style={{ background: '#FF6F61', color: '#fff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>✕</button>
+                      </div>
+                    ))}
+                    <input type="file" name="heroClassicImageFiles" multiple accept="image/*" style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '10px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                  </div>
                 </div>
               </div>
 
@@ -3147,78 +3318,96 @@ function InnerApp() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                   <div className="admin-form-group">
                     <label>Banner Enabled</label>
-                    <select name="bannerEnabled" defaultValue={siteSettings?.bannerEnabled !== false ? 'true' : 'false'} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }}>
+                    <select value={ssBannerEnabled} onChange={e => setSsBannerEnabled(e.target.value)} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }}>
                       <option value="true">Enabled</option>
                       <option value="false">Disabled</option>
                     </select>
                   </div>
                   <div className="admin-form-group">
                     <label>Banner Title</label>
-                    <input type="text" name="bannerTitle" defaultValue={siteSettings?.bannerTitle || 'Royal Collection Sale'} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                    <input type="text" value={ssBannerTitle} onChange={e => setSsBannerTitle(e.target.value)} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
                   </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '15px' }}>
                   <div className="admin-form-group">
                     <label>Banner Discount Text (e.g. 15% OFF, empty for fallback)</label>
-                    <input type="text" name="bannerDiscount" defaultValue={siteSettings?.bannerDiscount || ''} placeholder="Leave empty to use active db offers or 15% OFF fallback" style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                    <input type="text" value={ssBannerDiscount} onChange={e => setSsBannerDiscount(e.target.value)} placeholder="Leave empty to use active db offers or 15% OFF fallback" style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
                   </div>
                   <div className="admin-form-group">
                     <label>Banner Badge Text</label>
-                    <input type="text" name="bannerExtraDiscount" defaultValue={siteSettings?.bannerExtraDiscount || 'Limited Time Only'} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                    <input type="text" value={ssBannerExtraDiscount} onChange={e => setSsBannerExtraDiscount(e.target.value)} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
                   </div>
                 </div>
                 <div className="admin-form-group" style={{ marginTop: '15px' }}>
                   <label>Banner Description</label>
-                  <textarea name="bannerDescription" rows={3} defaultValue={siteSettings?.bannerDescription || 'Discover exquisite craftsmanship at unprecedented prices. Elevate your elegance today.'} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%', resize: 'vertical' }}></textarea>
+                  <textarea rows={3} value={ssBannerDescription} onChange={e => setSsBannerDescription(e.target.value)} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%', resize: 'vertical' }}></textarea>
                 </div>
                 <div className="admin-form-group" style={{ marginTop: '15px' }}>
-                  <label>Images</label>
-                  <ImageArrayUpload name="bannerImageClassic" initialImages={siteSettings?.bannerImageClassic || ['/images/offer_classic.png']} />
+                  <label>Banner Images</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {ssBannerImageClassic.map((img, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <img src={img} alt={`Banner ${idx + 1}`} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} />
+                        <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', flex: 1, wordBreak: 'break-all' }}>{img}</span>
+                        <button type="button" onClick={() => setSsBannerImageClassic(ssBannerImageClassic.filter((_, i) => i !== idx))} style={{ background: '#FF6F61', color: '#fff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>✕</button>
+                      </div>
+                    ))}
+                    <input type="file" name="bannerImageClassicFiles" multiple accept="image/*" style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '10px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                  </div>
                 </div>
               </div>
 
               {/* --- ABOUT US & CONTACT SETTINGS --- */}
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px', paddingBottom: '20px' }}>
                 <h4 style={{ color: 'var(--gold)', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  About Us & Contact Settings
+                  About Us &amp; Contact Settings
                 </h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>
                   <div className="admin-form-group">
                     <label>About Us Title (HTML supported)</label>
-                    <input type="text" name="aboutTitle" defaultValue={siteSettings?.aboutTitle || 'Where Tradition<br/>Meets <span class="gold-text">Elegance</span>'} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                    <input type="text" value={ssAboutTitle} onChange={e => setSsAboutTitle(e.target.value)} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
                   </div>
                   <div className="admin-form-group">
                     <label>About Us Description</label>
-                    <textarea name="aboutDescription" rows={4} defaultValue={siteSettings?.aboutDescription || 'Born from a passion for timeless artistry, Parisu Ulagam is a celebration of heritage craftsmanship and modern luxury. Every piece in our collection tells a story — of skilled artisans, precious materials, and designs that transcend generations.'} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%', resize: 'vertical' }}></textarea>
+                    <textarea rows={4} value={ssAboutDescription} onChange={e => setSsAboutDescription(e.target.value)} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%', resize: 'vertical' }}></textarea>
                   </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '15px' }}>
                   <div className="admin-form-group">
                     <label>Contact Phone Number</label>
-                    <input type="text" name="contactPhone" defaultValue={siteSettings?.contactPhone || '+91 94883 16728'} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                    <input type="text" value={ssContactPhone} onChange={e => setSsContactPhone(e.target.value)} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
                   </div>
                   <div className="admin-form-group">
                     <label>Contact Email</label>
-                    <input type="text" name="contactEmail" defaultValue={siteSettings?.contactEmail || 'thesmgroups@gmail.com'} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                    <input type="text" value={ssContactEmail} onChange={e => setSsContactEmail(e.target.value)} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
                   </div>
                 </div>
                 <div className="admin-form-group" style={{ marginTop: '15px' }}>
                   <label>Contact Address (HTML / Linebreaks supported)</label>
-                  <textarea name="contactAddress" rows={2} defaultValue={siteSettings?.contactAddress || 'IInd Floor, OM Shiva Towers, 259-B,<br/>Advaitha Ashram Rd, Fairlands, Salem - 636004'} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%', resize: 'vertical' }}></textarea>
+                  <textarea rows={2} value={ssContactAddress} onChange={e => setSsContactAddress(e.target.value)} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%', resize: 'vertical' }}></textarea>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '15px' }}>
                   <div className="admin-form-group">
                     <label>About Us Accent Number (e.g. 5+)</label>
-                    <input type="text" name="aboutAccentNum" defaultValue={siteSettings?.aboutAccentNum || '5+'} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                    <input type="text" value={ssAboutAccentNum} onChange={e => setSsAboutAccentNum(e.target.value)} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
                   </div>
                   <div className="admin-form-group">
                     <label>About Us Accent Label (e.g. Years of Craftsmanship)</label>
-                    <input type="text" name="aboutAccentLabel" defaultValue={siteSettings?.aboutAccentLabel || 'Years of Craftsmanship'} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                    <input type="text" value={ssAboutAccentLabel} onChange={e => setSsAboutAccentLabel(e.target.value)} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
                   </div>
                 </div>
                 <div className="admin-form-group" style={{ marginTop: '15px' }}>
                   <label>About Us Main Image</label>
-                  <ImageArrayUpload name="aboutImage" initialImages={siteSettings?.aboutImage || ['/images/toy-classic.png']} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {ssAboutImage.map((img, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <img src={img} alt={`About ${idx + 1}`} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} />
+                        <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', flex: 1, wordBreak: 'break-all' }}>{img}</span>
+                        <button type="button" onClick={() => setSsAboutImage(ssAboutImage.filter((_, i) => i !== idx))} style={{ background: '#FF6F61', color: '#fff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>✕</button>
+                      </div>
+                    ))}
+                    <input type="file" name="aboutImageFiles" multiple accept="image/*" style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '10px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                  </div>
                 </div>
               </div>
 
@@ -3773,7 +3962,58 @@ function InnerApp() {
                       />
                     </div>
 
-                    <div className="admin-form-group full-width">
+                    <div className="admin-form-group full-width" style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', marginTop: '8px' }}>
+                      <h4 style={{ margin: '0 0 12px 0', color: 'var(--gold)', fontSize: '1rem' }}>Hero Slide Settings</h4>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '12px' }}>Customize how this category appears in the homepage hero slider.</p>
+                      
+                      <label htmlFor="category-hero-tagline">Hero Tagline</label>
+                      <input
+                        id="category-hero-tagline"
+                        type="text"
+                        value={categoryHeroTagline}
+                        onChange={e => setCategoryHeroTagline(e.target.value)}
+                        placeholder="e.g. Timeless Handcrafted Art"
+                        style={{ marginBottom: '12px' }}
+                      />
+
+                      <label htmlFor="category-hero-offer">Offer Text</label>
+                      <input
+                        id="category-hero-offer"
+                        type="text"
+                        value={categoryHeroOfferText}
+                        onChange={e => setCategoryHeroOfferText(e.target.value)}
+                        placeholder="e.g. Upto 15% OFF on your first order"
+                        style={{ marginBottom: '12px' }}
+                      />
+
+                      <label htmlFor="category-hero-color">Accent Color</label>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <input
+                          id="category-hero-color"
+                          type="color"
+                          value={categoryHeroAccentColor || '#27AE60'}
+                          onChange={e => setCategoryHeroAccentColor(e.target.value)}
+                          style={{ width: '40px', height: '40px', padding: '2px', cursor: 'pointer', background: 'var(--bg-primary)', border: '1px solid var(--border)' }}
+                        />
+                        <input
+                          type="text"
+                          value={categoryHeroAccentColor}
+                          onChange={e => setCategoryHeroAccentColor(e.target.value)}
+                          placeholder="e.g. #27AE60"
+                          style={{ flex: 1 }}
+                        />
+                        <button 
+                          type="button" 
+                          className="secondary-btn" 
+                          onClick={() => setCategoryHeroAccentColor('')}
+                          style={{ padding: '8px 12px', fontSize: '0.85rem' }}
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="admin-form-group full-width" style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', marginTop: '8px' }}>
                       <label htmlFor="category-image">Category Image File</label>
                       <input
                         id="category-image"
@@ -3844,7 +4084,7 @@ function InnerApp() {
       {/* —— NAVIGATION —— */}
       <nav className="header-nav" aria-label="Primary navigation">
         <div className="brand">
-          <div className="brand__logo" aria-hidden="true"><img src="/royal_logo.png" alt="Parisu Ulagam" style={{width:'100%', height:'100%'}}/></div>
+          <div className="brand__logo" aria-hidden="true"><img src="/PU.jpeg" alt="Parisu Ulagam" style={{width:'100%', height:'100%', objectFit:'cover'}}/></div>
           <div>
             <span className="sr-only">Parisu Ulagam</span>
             <div className="brand__name">Parisu Ulagam</div>
@@ -3873,7 +4113,7 @@ function InnerApp() {
           >
             ✕
           </button>
-          <div className="menu-drawer-logo"><img src="/royal_logo.png" alt="Parisu Ulagam" style={{width:'100%', height:'100%', objectFit:'contain'}}/></div>
+          <div className="menu-drawer-logo"><img src="/PU.jpeg" alt="Parisu Ulagam" style={{width:'100%', height:'100%', objectFit:'cover'}}/></div>
           <a href="#home" className={activeSection === 'home' ? 'active' : ''} onClick={() => { setActiveSection('home'); setMenuOpen(false); }}>Home</a>
           <a href="#shop" className={activeSection === 'shop' ? 'active' : ''} onClick={() => { setActiveSection('shop'); setMenuOpen(false); }}>Shop</a>
           <a href="#categories" onClick={() => { setMenuOpen(false); document.getElementById('categories')?.scrollIntoView({ behavior: 'smooth' }); }}>Collections</a>
@@ -4040,6 +4280,14 @@ function InnerApp() {
                   {/* Left: Images */}
                   <div className="product-details-images" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ background: 'var(--bg-secondary)', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border)', position: 'relative' }}>
+                      <button
+                        className={`product-card__wishlist ${isWished(selectedProduct.id) ? 'active' : ''}`}
+                        aria-label={`Toggle wishlist for ${selectedProduct.name}`}
+                        onClick={e => { e.stopPropagation(); toggleWish(selectedProduct, e); }}
+                        style={{ zIndex: 10 }}
+                      >
+                        {isWished(selectedProduct.id) ? '♥' : '♡'}
+                      </button>
                       <img src={activeDetailImage} alt={selectedProduct.name} style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain', maxHeight: '500px' }} />
                       {selectedProduct.images && selectedProduct.images.length > 1 && (
                         <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: '0.72rem', padding: '4px 10px', borderRadius: '20px', fontWeight: '600', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -4153,6 +4401,7 @@ function InnerApp() {
                             const savedPhone = currentUser?.addresses?.[0]?.phone || currentUser?.mobile || '';
                             setCheckoutAddress(savedAddress);
                             setCheckoutPhone(savedPhone);
+                            setCheckoutAddressIdx(0);
                             setCheckoutOpen(true);
                           }
                         }}
@@ -4167,15 +4416,53 @@ function InnerApp() {
 
                 {/* Related Products */}
                 <div className="related-products" style={{ marginTop: '60px', borderTop: '1px solid var(--border)', paddingTop: '40px' }}>
-                  <h2 style={{ fontSize: '1.8rem', marginBottom: '30px' }}>Related Products</h2>
+                  <h2 style={{ fontSize: '1.8rem', marginBottom: '30px' }}>
+                    {selectedProduct.collection
+                      ? `More from ${selectedProduct.collection} Collection`
+                      : `More in ${selectedProduct.category}`}
+                  </h2>
                   <div className="product-grid">
-                    {products
-                      .filter(p => p.category === selectedProduct.category && p.id !== selectedProduct.id && p._id !== selectedProduct._id)
-                      .slice(0, 4)
-                      .map(p => (
+                    {(() => {
+                      const currentId = selectedProduct.id || selectedProduct._id;
+                      const currentCollection = (selectedProduct.collection || '').trim();
+                      const currentCategory = selectedProduct.category;
+
+                      // Step 1: Match by collection (if collection is non-empty)
+                      let related = [];
+                      if (currentCollection) {
+                        related = products.filter(p => {
+                          const pId = p.id || p._id;
+                          return pId !== currentId &&
+                            (p.collection || '').trim().toLowerCase() === currentCollection.toLowerCase();
+                        });
+                        // Sort: same category first, then rest of collection
+                        related.sort((a, b) => {
+                          const aMatch = a.category === currentCategory ? 0 : 1;
+                          const bMatch = b.category === currentCategory ? 0 : 1;
+                          return aMatch - bMatch;
+                        });
+                      }
+
+                      // Step 2: Fallback to same category if no collection matches
+                      if (related.length === 0) {
+                        related = products.filter(p => {
+                          const pId = p.id || p._id;
+                          return pId !== currentId && p.category === currentCategory;
+                        });
+                      }
+
+                      return related.slice(0, 4).map(p => (
                         <article key={p.id || p._id} className="product-card" onClick={() => openDetail(p)} tabIndex={0} role="button">
                           <div className="product-card__image-wrap">
                     <ProductImageSlider mainImage={p.image} allImages={p.images} altText={p.name} />
+                    <button
+                      className={`product-card__wishlist ${isWished(p.id) ? 'active' : ''}`}
+                      aria-label={`Toggle wishlist for ${p.name}`}
+                      onClick={e => { e.stopPropagation(); toggleWish(p, e); }}
+                    >
+                      {isWished(p.id) ? '♥' : '♡'}
+                    </button>
+                    {p.badge && <span className={`product-card__badge badge--${p.badgeClass || 'new'}`}>{p.badge}</span>}
                           </div>
                           <div className="product-card__body">
                             <div className="product-card__name">{p.name}</div>
@@ -4198,7 +4485,8 @@ function InnerApp() {
                             </div>
                           </div>
                         </article>
-                    ))}
+                      ));
+                    })()}
                   </div>
                 </div>
               </>
@@ -4529,7 +4817,7 @@ function InnerApp() {
           <div className="footer-grid">
             <div className="footer-brand-col">
               <div className="footer-brand">
-                <img src="/royal_logo.png" alt="Parisu Ulagam" className="footer-logo-img" />
+                <img src="/PU.jpeg" alt="Parisu Ulagam" className="footer-logo-img" />
                 <div>
                   <div className="footer-brand-name">Parisu Ulagam</div>
                   <div className="footer-brand-tag">Royal Living</div>
@@ -4564,6 +4852,17 @@ function InnerApp() {
               <div className="footer-contact-item">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                 <span dangerouslySetInnerHTML={{ __html: siteSettings?.contactAddress || 'IInd Floor, OM Shiva Towers, 259-B,<br/>Advaitha Ashram Rd, Fairlands, Salem - 636004' }}></span>
+              </div>
+              <div className="footer-social-links">
+                <a href="https://www.instagram.com/parisu_ulagam?utm_source=qr&igsh=MXZqcDA0emR3aHI4bA==" target="_blank" rel="noopener noreferrer" className="footer-social-btn instagram" aria-label="Instagram">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                </a>
+                <a href="https://www.facebook.com/share/1GPLEwwQPS/" target="_blank" rel="noopener noreferrer" className="footer-social-btn facebook" aria-label="Facebook">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                </a>
+                <a href="https://www.youtube.com/@ParisuUlagam" target="_blank" rel="noopener noreferrer" className="footer-social-btn youtube" aria-label="YouTube">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                </a>
               </div>
             </div>
           </div>
@@ -4777,6 +5076,7 @@ function InnerApp() {
                       const savedPhone = currentUser?.addresses?.[0]?.phone || currentUser?.mobile || '';
                       setCheckoutAddress(savedAddress);
                       setCheckoutPhone(savedPhone);
+                      setCheckoutAddressIdx(0);
                       setCheckoutOpen(true);
                     }
                   }}
@@ -4791,7 +5091,7 @@ function InnerApp() {
           
       {/* —— CHECKOUT MODAL —— */}
           {checkoutOpen && (
-            <div className="admin-modal-overlay" style={{ zIndex: 1100 }}>
+            <div className="admin-modal-overlay" style={{ zIndex: 10000 }}>
               <div className="admin-modal-card" style={{ maxWidth: '540px', maxHeight: '90vh', overflowY: 'auto' }}>
                 <div className="admin-modal-header" style={{ position: 'sticky', top: 0, background: 'var(--bg-card)', zIndex: 1 }}>
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -4818,18 +5118,29 @@ function InnerApp() {
                               onClick={() => {
                                 setCheckoutAddress(addr.address);
                                 setCheckoutPhone(addr.phone || currentUser?.mobile || '');
+                                setCheckoutAddressIdx(idx);
                               }}
                               style={{
-                                textAlign: 'left', padding: '10px 14px', borderRadius: '8px', cursor: 'pointer',
-                                border: `1px solid ${checkoutAddress === addr.address ? 'var(--gold)' : 'var(--border)'}`,
-                                background: checkoutAddress === addr.address ? 'rgba(201,168,76,0.08)' : 'var(--bg-secondary)',
-                                color: 'var(--text-primary)'
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '12px 16px', borderRadius: '8px', cursor: 'pointer',
+                                border: `1.5px solid ${checkoutAddressIdx === idx ? 'var(--gold)' : 'var(--border)'}`,
+                                background: checkoutAddressIdx === idx ? 'rgba(201,168,76,0.1)' : 'var(--bg-secondary)',
+                                color: 'var(--text-primary)', textAlign: 'left', transition: 'all 0.2s ease'
                               }}
                             >
-                              <div style={{ fontWeight: '600', fontSize: '0.8rem', color: 'var(--gold)', marginBottom: '3px' }}>{addr.label}</div>
-                              <div style={{ fontSize: '0.85rem', fontWeight: '500' }}>{addr.name}</div>
-                              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{addr.address}</div>
-                              {addr.phone && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> {addr.phone}</div>}
+                              <div>
+                                <div style={{ fontWeight: '600', fontSize: '0.9rem', color: checkoutAddressIdx === idx ? 'var(--gold)' : 'inherit' }}>
+                                  {addr.label || 'Saved Address'}
+                                </div>
+                                {addr.name && (
+                                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                    {addr.name}
+                                  </div>
+                                )}
+                              </div>
+                              {checkoutAddressIdx === idx && (
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                              )}
                             </button>
                           ))}
                         </div>
@@ -5040,12 +5351,12 @@ function InnerApp() {
                 <form onSubmit={handleUserLogin}>
                   <div className="form-group">
                     <label htmlFor="user-login-email">Email Address</label>
-                    <input id="user-login-email" type="email" value={regEmail} onChange={e => setRegEmail(e.target.value)} required placeholder="your@email.com" />
+                    <input id="user-login-email" type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} required placeholder="your@email.com" />
                   </div>
                   <div className="form-group">
                     <label htmlFor="user-login-password">Password</label>
                     <div style={{ position: 'relative' }}>
-                      <input id="user-login-password" type={showPassword ? 'text' : 'password'} value={regPassword} onChange={e => setRegPassword(e.target.value)} required style={{ paddingRight: '44px', width: '100%', boxSizing: 'border-box' }} placeholder="••••••••" />
+                      <input id="user-login-password" type={showPassword ? 'text' : 'password'} value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required style={{ paddingRight: '44px', width: '100%', boxSizing: 'border-box' }} placeholder="••••••••" />
                       <button type="button" onClick={() => setShowPassword(p => !p)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0', display: 'flex' }}>
                         {showPassword ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
                       </button>
@@ -5372,6 +5683,24 @@ function InnerApp() {
           removeFromCart={removeFromCart}
           updateQuantity={updateQuantity}
           removeFromWishlist={removeFromWishlist}
+          buyNow={(product) => {
+            setBuyNowItem({ ...product, quantity: 1 });
+            const savedAddress = currentUser?.addresses?.[0]?.address || currentUser?.address || '';
+            const savedPhone = currentUser?.addresses?.[0]?.phone || currentUser?.mobile || '';
+            setCheckoutAddress(savedAddress);
+            setCheckoutPhone(savedPhone);
+            setCheckoutAddressIdx(0);
+            setCheckoutOpen(true);
+          }}
+          checkoutCart={() => {
+            setBuyNowItem(null);
+            const savedAddress = currentUser?.addresses?.[0]?.address || currentUser?.address || '';
+            const savedPhone = currentUser?.addresses?.[0]?.phone || currentUser?.mobile || '';
+            setCheckoutAddress(savedAddress);
+            setCheckoutPhone(savedPhone);
+            setCheckoutAddressIdx(0);
+            setCheckoutOpen(true);
+          }}
         />
       )}
 

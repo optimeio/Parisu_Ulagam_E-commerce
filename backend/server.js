@@ -283,7 +283,10 @@ const categorySchema = new mongoose.Schema(
     id: { type: String, required: true, unique: true },
     label: { type: String, required: true },
     desc: { type: String, default: '' },
-    image: { type: String, default: '' }
+    image: { type: String, default: '' },
+    heroTagline: { type: String, default: '' },
+    heroAccentColor: { type: String, default: '' },
+    heroOfferText: { type: String, default: '' }
   },
   { timestamps: true }
 );
@@ -374,6 +377,7 @@ const reviewSchema = new mongoose.Schema(
     userEmail: { type: String, required: true },
     rating: { type: Number, required: true, min: 1, max: 5 },
     comment: { type: String, default: '' },
+    images: { type: [String], default: [] },
     status: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Approved' } // Auto-approve for simplicity, but leave option
   },
   { timestamps: true }
@@ -609,17 +613,54 @@ app.get('/api/products/:id/reviews', async (req, res) => {
   }
   try {
     const { id } = req.params;
-    // We want to fetch the customer name as well. We can do a manual lookup or just use "Customer"
-    const reviews = await Review.find({ productId: id }).sort({ createdAt: -1 }).lean();
+    
+    // Find the product first to query by other identifiers (id, name, _id)
+    const product = await Product.findOne({
+      $or: [
+        { id: id },
+        { name: id },
+        { _id: mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null }
+      ].filter(Boolean)
+    }).lean();
+
+    const queryConditions = [{ productId: id }];
+    if (product) {
+      queryConditions.push({ productId: product.id });
+      queryConditions.push({ productId: product.name });
+      if (product._id) {
+        queryConditions.push({ productId: product._id.toString() });
+      }
+    }
+
+    const reviews = await Review.find({
+      $or: queryConditions
+    }).sort({ createdAt: -1 }).lean();
     
     // We can fetch user names for these reviews
     const emails = [...new Set(reviews.map(r => r.userEmail))];
     const users = await User.find({ email: { $in: emails } }).select('email name').lean();
     const userMap = users.reduce((acc, u) => { acc[u.email] = u.name; return acc; }, {});
 
-    const enrichedReviews = reviews.map(r => ({
-      ...r,
-      customerName: userMap[r.userEmail] || 'Verified Customer'
+    // Check purchase status for each review dynamically
+    const enrichedReviews = await Promise.all(reviews.map(async r => {
+      let isVerifiedPurchase = false;
+      if (product) {
+        const orderCount = await Order.countDocuments({
+          userEmail: r.userEmail,
+          status: { $ne: 'Cancelled' },
+          $or: [
+            { 'items.id': product.id },
+            { 'items._id': product._id.toString() },
+            { 'items.name': product.name }
+          ]
+        });
+        isVerifiedPurchase = orderCount > 0;
+      }
+      return {
+        ...r,
+        customerName: userMap[r.userEmail] || 'Verified Customer',
+        isVerifiedPurchase
+      };
     }));
 
     return res.json({ success: true, reviews: enrichedReviews });
@@ -1285,14 +1326,19 @@ app.post('/api/users/returns', requireUser, async (req, res) => {
 });
 
 // 13. Submit Product Review
-app.post('/api/users/reviews', requireUser, async (req, res) => {
+app.post('/api/users/reviews', requireUser, upload.array('images', 3), async (req, res) => {
   if (!dbConnected) return res.status(503).json({ success: false, message: 'Database not connected.' });
   try {
     const { productId, rating, comment } = req.body;
     if (!productId || !rating) return res.status(400).json({ success: false, message: 'Product ID and rating are required.' });
     
+    let images = [];
+    if (req.files && req.files.length > 0) {
+      images = req.files.map(file => `/images/uploads/${file.filename}`);
+    }
+
     // Create the review
-    const review = new Review({ productId, userEmail: req.userEmail, rating: Number(rating), comment: comment || '' });
+    const review = new Review({ productId, userEmail: req.userEmail, rating: Number(rating), comment: comment || '', images });
     await review.save();
 
     // Update Product average rating & count
@@ -1772,7 +1818,7 @@ app.post('/api/admin/categories', requireAdmin, upload.single('image'), async (r
     return res.status(503).json({ success: false, message: 'Database not connected. Cannot create categories.' });
   }
   try {
-    const { label, desc, imageUrl } = req.body;
+    const { label, desc, imageUrl, heroTagline, heroAccentColor, heroOfferText } = req.body;
     if (!label) {
       return res.status(400).json({ success: false, message: 'Category label is required.' });
     }
@@ -1788,7 +1834,10 @@ app.post('/api/admin/categories', requireAdmin, upload.single('image'), async (r
       id: categoryId,
       label,
       desc: desc || '',
-      image: finalImage
+      image: finalImage,
+      heroTagline: heroTagline || '',
+      heroAccentColor: heroAccentColor || '',
+      heroOfferText: heroOfferText || ''
     });
     await category.save();
     return res.status(201).json({ success: true, message: 'Category created successfully.', category });
@@ -1808,7 +1857,7 @@ app.put('/api/admin/categories/:id', requireAdmin, upload.single('image'), async
       return res.status(404).json({ success: false, message: 'Category not found.' });
     }
 
-    const { label, desc, imageUrl } = req.body;
+    const { label, desc, imageUrl, heroTagline, heroAccentColor, heroOfferText } = req.body;
     if (!label) {
       return res.status(400).json({ success: false, message: 'Category label is required.' });
     }
@@ -1826,6 +1875,9 @@ app.put('/api/admin/categories/:id', requireAdmin, upload.single('image'), async
 
     cat.label = label;
     cat.desc = desc || '';
+    if (heroTagline !== undefined) cat.heroTagline = heroTagline;
+    if (heroAccentColor !== undefined) cat.heroAccentColor = heroAccentColor;
+    if (heroOfferText !== undefined) cat.heroOfferText = heroOfferText;
 
     if (req.file) {
       cat.image = `/images/uploads/${req.file.filename}`;

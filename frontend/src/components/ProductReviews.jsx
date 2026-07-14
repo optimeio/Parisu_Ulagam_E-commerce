@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { assetUrl } from '../config';
 
 const ProductReviews = ({ productId }) => {
   const [reviews, setReviews] = useState([]);
@@ -43,7 +44,9 @@ const ProductReviews = ({ productId }) => {
               <div>
                 <p style={{ margin: '0 0 4px', fontWeight: 'bold', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {review.customerName || 'Verified Customer'}
-                  <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(34,197,94,0.15)', color: '#16a34a', borderRadius: '4px', textTransform: 'uppercase', fontWeight: '700' }}>✓ Verified Purchase</span>
+                  {review.isVerifiedPurchase && (
+                    <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(34,197,94,0.15)', color: '#16a34a', borderRadius: '4px', textTransform: 'uppercase', fontWeight: '700' }}>✓ Verified Purchase</span>
+                  )}
                 </p>
                 <div style={{ display: 'flex', gap: '2px', color: '#eab308', fontSize: '1.1rem' }}>
                   {[...Array(5)].map((_, i) => (
@@ -56,9 +59,18 @@ const ProductReviews = ({ productId }) => {
               </span>
             </div>
             {review.comment && (
-              <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+              <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: review.images && review.images.length > 0 ? '12px' : '0' }}>
                 {review.comment}
               </p>
+            )}
+            {review.images && review.images.length > 0 && (
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: review.comment ? '0' : '12px' }}>
+                {review.images.map((img, i) => (
+                  <a key={i} href={assetUrl(img)} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
+                    <img src={assetUrl(img)} alt={`Review attach ${i+1}`} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border)' }} />
+                  </a>
+                ))}
+              </div>
             )}
           </div>
         ))}

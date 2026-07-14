@@ -4,7 +4,7 @@ import { ToastContext } from '../context/ToastContext';
 import InvoiceView from './InvoiceView';
 import OrderDetailsView from './OrderDetailsView';
 
-export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab = 'profile', cartItems = [], wishlist = [], addToCart, removeFromCart, updateQuantity, removeFromWishlist }) => {
+export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab = 'profile', cartItems = [], wishlist = [], addToCart, removeFromCart, updateQuantity, removeFromWishlist, buyNow, checkoutCart }) => {
   const { getCartKey } = useContext(CartContext);
   const [profile, setProfile] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -18,6 +18,7 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
   const [editAddressIndex, setEditAddressIndex] = useState(null);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState(null);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
+  const [referenceImages, setReferenceImages] = useState([]);
   const { addToast } = React.useContext(ToastContext);
 
   const fetchProfile = async () => {
@@ -131,10 +132,10 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
     formData.append('productType', form.productType.value);
     formData.append('description', form.description.value);
     
-    if (form.referenceImages.files) {
-      for (let i = 0; i < form.referenceImages.files.length; i++) {
-        formData.append('referenceImages', form.referenceImages.files[i]);
-      }
+    if (referenceImages && referenceImages.length > 0) {
+      referenceImages.forEach(img => {
+        formData.append('referenceImages', img);
+      });
     }
 
     try {
@@ -146,6 +147,7 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
       if (res.ok) {
         addToast('Custom request submitted successfully! We will contact you soon.', 'success');
         form.reset();
+        setReferenceImages([]);
         fetchCustomRequests(profile._id || profile.id);
       } else {
         throw new Error(data.message || 'Failed to submit request');
@@ -244,7 +246,7 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
       <aside className={`admin-sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="admin-sidebar-header" style={{ background: 'linear-gradient(135deg, #012a32 0%, #03404c 100%)' }}>
           <div className="brand__logo" style={{width:'40px', height:'40px', fontSize:'0.9rem'}}>
-            <img src="/royal_logo.png" alt="Parisu Ulagam" style={{width:'100%', height:'100%'}}/>
+            <img src="/PU.jpeg" alt="Parisu Ulagam" style={{width:'100%', height:'100%'}}/>
           </div>
           <div style={{fontSize:'1.1rem', color:'#FCEDD6', fontWeight:'700', letterSpacing:'0.08em', textTransform:'uppercase', fontFamily:"'Cormorant Garamond', serif", WebkitTextFillColor:'#FCEDD6'}}>My Account</div>
         </div>
@@ -259,7 +261,7 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
           </button>
           <button className={`admin-nav-item ${activeTab === 'cart' ? 'active' : ''}`} onClick={() => { setActiveTab('cart'); setIsSidebarOpen(false); }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:'10px'}}><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-            Cart Items
+            Cart Dashboard
           </button>
           <button className={`admin-nav-item ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => { setActiveTab('orders'); setIsSidebarOpen(false); }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:'10px'}}><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
@@ -298,7 +300,7 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
               <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '300' }}>
                 {activeTab === 'profile' && 'My Profile'}
                 {activeTab === 'wishlist' && 'My Wishlist'}
-                {activeTab === 'cart' && 'My Cart Items'}
+                {activeTab === 'cart' && 'Cart Dashboard'}
                 {activeTab === 'orders' && 'Order History'}
                 {activeTab === 'queries' && 'Submit a Query'}
                 {activeTab === 'custom_orders' && 'Custom Orders'}
@@ -443,15 +445,28 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
                       <img 
                         src={item.image || '/images/hero.png'} 
                         alt={item.name} 
-                        style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '6px', marginBottom: '10px', cursor: 'pointer' }} 
+                        style={{ width: '100%', height: 'auto', maxHeight: '200px', objectFit: 'contain', borderRadius: '6px', marginBottom: '10px', cursor: 'pointer' }} 
                         onClick={() => {
                           if (onClose) onClose();
                           window.location.hash = `#/product/${item.id || item.productId || item._id}`;
                         }}
                       />
                       <p style={{ margin: '0 0 5px 0', fontWeight: '500', fontSize: '0.9rem' }}>{item.name}</p>
+                      {item.description && (
+                        <p style={{ margin: '0 0 8px 0', fontSize: '0.75rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {item.description}
+                        </p>
+                      )}
                       <p style={{ margin: '0 0 10px', color: 'var(--gold)', fontWeight: '600' }}>₹{item.price?.toLocaleString('en-IN')}</p>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                        {buyNow && (
+                          <button
+                            onClick={() => buyNow(item)}
+                            style={{ padding: '8px 16px', fontSize: '0.78rem', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase', background: 'var(--gold)', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s ease' }}
+                          >
+                            Buy Now
+                          </button>
+                        )}
                         {addToCart && (
                           <button
                             onClick={() => { addToCart(item, 1); addToast(`${item.name} added to cart!`, 'success'); }}
@@ -463,7 +478,7 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
                         {removeFromWishlist && (
                           <button
                             onClick={() => { removeFromWishlist(item.id); addToast('Removed from wishlist', 'info'); }}
-                            style={{ padding: '8px 16px', fontSize: '0.78rem', fontWeight: '600', letterSpacing: '0.05em', textTransform: 'uppercase', background: 'transparent', color: '#62828D', border: '1px solid #C8DCDD', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s ease' }}
+                            style={{ padding: '8px 16px', fontSize: '0.78rem', fontWeight: '600', letterSpacing: '0.05em', textTransform: 'uppercase', background: 'transparent', color: '#FF6F61', border: '1px solid #FF6F61', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s ease' }}
                           >
                             Remove
                           </button>
@@ -481,7 +496,7 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
           {/* CART */}
           {activeTab === 'cart' && (
             <div className="admin-card">
-              <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Current Cart ({cartItems.length} items)</h3>
+              <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Cart Dashboard ({cartItems.length} items)</h3>
               {cartItems && cartItems.length > 0 ? (
                 <>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '20px' }}>
@@ -525,9 +540,16 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
                       );
                     })}
                   </div>
-                  <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <strong style={{ fontSize: '1rem' }}>Total</strong>
-                    <strong style={{ fontSize: '1.1rem', color: 'var(--gold)' }}>₹{cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0).toLocaleString('en-IN')}</strong>
+                  <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                    <strong style={{ fontSize: '1.1rem' }}>Total: <span style={{ color: 'var(--gold)' }}>₹{cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0).toLocaleString('en-IN')}</span></strong>
+                    {checkoutCart && (
+                      <button 
+                        onClick={() => checkoutCart()}
+                        style={{ padding: '10px 20px', fontSize: '0.85rem', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase', background: 'linear-gradient(135deg, #012a32, #03404c)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s ease' }}
+                      >
+                        Proceed to Checkout
+                      </button>
+                    )}
                   </div>
                 </>
               ) : (
@@ -831,13 +853,65 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
                   </div>
                   <div className="admin-form-group">
                     <label>Reference Images <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(Optional, up to 5)</span></label>
-                    <input
-                      type="file"
-                      name="referenceImages"
-                      multiple
-                      accept="image/*"
-                      style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '10px 12px', borderRadius: '6px', color: 'var(--text-muted)', width: '100%' }}
-                    />
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                      {[0, 1, 2, 3, 4].map(index => {
+                        const file = referenceImages[index];
+                        const previewUrl = file ? URL.createObjectURL(file) : null;
+                        return (
+                          <div 
+                            key={index}
+                            style={{ 
+                              width: '80px', height: '80px', 
+                              border: file ? 'none' : '2px dashed var(--border)', 
+                              borderRadius: '8px', 
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                              cursor: 'pointer', position: 'relative', overflow: 'hidden',
+                              background: file ? 'transparent' : 'var(--bg-secondary)'
+                            }}
+                            onClick={() => document.getElementById(`custom-req-img-${index}`).click()}
+                          >
+                            {previewUrl ? (
+                              <>
+                                <img src={previewUrl} alt={`Reference ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <button 
+                                  type="button" 
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    const newImgs = [...referenceImages]; 
+                                    newImgs.splice(index, 1); 
+                                    setReferenceImages(newImgs); 
+                                    document.getElementById(`custom-req-img-${index}`).value = '';
+                                  }} 
+                                  style={{ 
+                                    position: 'absolute', top: 4, right: 4, 
+                                    background: 'rgba(0,0,0,0.6)', color: 'white', 
+                                    border: 'none', borderRadius: '50%', 
+                                    width: '20px', height: '20px', 
+                                    fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: 'pointer'
+                                  }}
+                                >✕</button>
+                              </>
+                            ) : (
+                              <span style={{ fontSize: '24px', color: 'var(--text-muted)' }}>+</span>
+                            )}
+                            <input 
+                              id={`custom-req-img-${index}`} 
+                              type="file" 
+                              accept="image/*" 
+                              style={{ display: 'none' }}
+                              onChange={e => {
+                                if (e.target.files && e.target.files[0]) {
+                                  const newImgs = [...referenceImages];
+                                  newImgs[index] = e.target.files[0];
+                                  setReferenceImages(newImgs.filter(Boolean));
+                                }
+                              }} 
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                   <button type="submit" className="primary-btn" style={{ alignSelf: 'flex-start', marginTop: '10px' }}>
                     	 Submit Request
