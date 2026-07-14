@@ -328,7 +328,8 @@ const orderSchema = new mongoose.Schema(
     razorpayPaymentId: { type: String, default: '' },
     razorpaySignature: { type: String, default: '' },
     courierName: { type: String, default: '' },
-    courierTrackingId: { type: String, default: '' }
+    courierTrackingId: { type: String, default: '' },
+    courierTrackingLink: { type: String, default: '' }
   },
   { timestamps: true }
 );
@@ -407,7 +408,12 @@ const siteSettingsSchema = new mongoose.Schema(
     contactAddress: { type: String, default: 'IInd Floor, OM Shiva Towers, 259-B, Advaitha Ashram Rd, Fairlands, Salem - 636004' },
     aboutImage: { type: [String], default: ['/images/toy-classic.png'] },
     aboutAccentNum: { type: String, default: '5+' },
-    aboutAccentLabel: { type: String, default: 'Years of Craftsmanship' }
+    aboutAccentLabel: { type: String, default: 'Years of Craftsmanship' },
+    colImageAll: { type: [String], default: ['/images/col_all.png'] },
+    colImageWomen: { type: [String], default: ['/images/col_women.png'] },
+    colImageMen: { type: [String], default: ['/images/col_men.png'] },
+    colImageKids: { type: [String], default: ['/images/col_kids.png'] },
+    colImageUnisex: { type: [String], default: ['/images/col_unisex.png'] }
   },
   { timestamps: true }
 );
@@ -1939,6 +1945,7 @@ app.put('/api/admin/orders/:orderId', requireAdmin, async (req, res) => {
     if (newStatus) order.status = newStatus;
     if (req.body.courierName !== undefined) order.courierName = req.body.courierName;
     if (req.body.courierTrackingId !== undefined) order.courierTrackingId = req.body.courierTrackingId;
+    if (req.body.courierTrackingLink !== undefined) order.courierTrackingLink = req.body.courierTrackingLink;
     await order.save();
 
     // Send status update email to customer
@@ -2081,7 +2088,12 @@ app.put('/api/admin/site-settings', requireAdmin, upload.fields([
   { name: 'bannerImageLightFiles', maxCount: 5 },
   { name: 'bannerImageDarkFiles', maxCount: 5 },
   { name: 'bannerImageClassicFiles', maxCount: 5 },
-  { name: 'aboutImageFiles', maxCount: 5 }
+  { name: 'aboutImageFiles', maxCount: 5 },
+  { name: 'colImageAllFiles', maxCount: 5 },
+  { name: 'colImageWomenFiles', maxCount: 5 },
+  { name: 'colImageMenFiles', maxCount: 5 },
+  { name: 'colImageKidsFiles', maxCount: 5 },
+  { name: 'colImageUnisexFiles', maxCount: 5 }
 ]), async (req, res) => {
   if (!dbConnected) return res.status(503).json({ success: false, message: 'Database not connected.' });
   try {
@@ -2093,7 +2105,7 @@ app.put('/api/admin/site-settings', requireAdmin, upload.fields([
     ];
     const imageFields = [
       'heroImageLight', 'heroImageDark', 'heroImage', 'heroClassicImage', 'bannerImageLight', 'bannerImageDark', 'bannerImageClassic',
-      'aboutImage'
+      'aboutImage', 'colImageAll', 'colImageWomen', 'colImageMen', 'colImageKids', 'colImageUnisex'
     ];
     
     const updates = {};
@@ -2358,3 +2370,5 @@ app.post('/api/coupons/use', async (req, res) => {
     return res.json({ success: true }); // Non-critical, don't break checkout
   }
 });
+
+

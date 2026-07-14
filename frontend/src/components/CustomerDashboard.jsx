@@ -4,6 +4,32 @@ import { ToastContext } from '../context/ToastContext';
 import InvoiceView from './InvoiceView';
 import OrderDetailsView from './OrderDetailsView';
 
+const buildTrackingUrl = (link, id) => {
+  if (!link) return '';
+  let url = link.trim();
+  if (!/^https?:\/\//i.test(url)) {
+    url = 'https://' + url;
+  }
+  if (/\{id\}/i.test(url)) {
+    return url.replace(/\{id\}/gi, encodeURIComponent(id));
+  }
+  const lowerUrl = url.toLowerCase();
+  if (lowerUrl.includes('dtdc')) {
+    return url + (url.includes('?') ? '&' : '?') + 'txCNNo=' + encodeURIComponent(id);
+  }
+  if (lowerUrl.includes('delhivery')) {
+    return url.replace(/\/$/, '') + '/track/package/' + encodeURIComponent(id);
+  }
+  if (lowerUrl.includes('bluedart')) {
+    return url + (url.includes('?') ? '&' : '?') + 'trackfor=' + encodeURIComponent(id);
+  }
+  if (lowerUrl.includes('ekart')) {
+    return url.replace(/\/$/, '') + '/shipmenttrack/' + encodeURIComponent(id);
+  }
+  return url;
+};
+
+
 export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab = 'profile', cartItems = [], wishlist = [], addToCart, removeFromCart, updateQuantity, removeFromWishlist, buyNow, checkoutCart }) => {
   const { getCartKey } = useContext(CartContext);
   const [profile, setProfile] = useState(null);
@@ -691,6 +717,42 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
                                 <>
                                   <p style={{ margin: '0 0 2px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>Tracking ID:</p>
                                   <p style={{ margin: '0 0 10px', fontSize: '0.8rem', fontWeight: '700', fontFamily: 'monospace', color: 'var(--gold)', wordBreak: 'break-all' }}>{order.courierTrackingId}</p>
+                                  {order.courierTrackingLink && (
+                                    <a
+                                      href={buildTrackingUrl(order.courierTrackingLink, order.courierTrackingId)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={() => {
+                                        if (navigator.clipboard) {
+                                          navigator.clipboard.writeText(order.courierTrackingId)
+                                            .then(() => addToast('Tracking ID copied to clipboard!', 'success'))
+                                            .catch(err => console.error("Could not copy tracking ID", err));
+                                        }
+                                      }}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '7px 14px',
+                                        background: 'linear-gradient(135deg, #b5882e 0%, #d4a843 100%)',
+                                        color: '#000',
+                                        fontWeight: '700',
+                                        fontSize: '0.78rem',
+                                        borderRadius: '8px',
+                                        textDecoration: 'none',
+                                        marginBottom: '10px',
+                                        boxShadow: '0 2px 8px rgba(212,168,67,0.3)',
+                                        transition: 'opacity 0.2s'
+                                      }}
+                                      onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                                      onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                                    >
+                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+                                      </svg>
+                                      Track Package
+                                    </a>
+                                  )}
                                 </>
                               ) : (
                                 <p style={{ margin: '0 0 10px', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>

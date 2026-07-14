@@ -1,6 +1,31 @@
 import React, { useState, useContext } from 'react';
 import { ToastContext } from '../context/ToastContext';
 
+const buildTrackingUrl = (link, id) => {
+  if (!link) return '';
+  let url = link.trim();
+  if (!/^https?:\/\//i.test(url)) {
+    url = 'https://' + url;
+  }
+  if (/\{id\}/i.test(url)) {
+    return url.replace(/\{id\}/gi, encodeURIComponent(id));
+  }
+  const lowerUrl = url.toLowerCase();
+  if (lowerUrl.includes('dtdc')) {
+    return url + (url.includes('?') ? '&' : '?') + 'txCNNo=' + encodeURIComponent(id);
+  }
+  if (lowerUrl.includes('delhivery')) {
+    return url.replace(/\/$/, '') + '/track/package/' + encodeURIComponent(id);
+  }
+  if (lowerUrl.includes('bluedart')) {
+    return url + (url.includes('?') ? '&' : '?') + 'trackfor=' + encodeURIComponent(id);
+  }
+  if (lowerUrl.includes('ekart')) {
+    return url.replace(/\/$/, '') + '/shipmenttrack/' + encodeURIComponent(id);
+  }
+  return url;
+};
+
 const OrderDetailsView = ({ order, token, onClose, onViewInvoice, onContactSupport, onOrderUpdate }) => {
   const { addToast } = useContext(ToastContext);
   const [loadingAction, setLoadingAction] = useState(null);
@@ -287,8 +312,36 @@ const OrderDetailsView = ({ order, token, onClose, onViewInvoice, onContactSuppo
                     View Invoice
                   </button>
                 )}
-                {order.courierTrackingId && !isCancelled && (
-                  <button style={{ padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', background: 'var(--gold)', color: '#1a1a1a', border: 'none', fontWeight: '700', fontSize: '0.83rem', width: '100%' }}>Track package</button>
+                {order.courierTrackingId && order.courierTrackingLink && !isCancelled && (
+                  <a
+                    href={buildTrackingUrl(order.courierTrackingLink, order.courierTrackingId)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => {
+                      if (navigator.clipboard) {
+                        navigator.clipboard.writeText(order.courierTrackingId)
+                          .then(() => addToast('Tracking ID copied to clipboard!', 'success'))
+                          .catch(err => console.error("Could not copy tracking ID", err));
+                      }
+                    }}
+                    style={{
+                      display: 'block',
+                      textAlign: 'center',
+                      textDecoration: 'none',
+                      padding: '10px 16px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      background: 'var(--gold)',
+                      color: '#1a1a1a',
+                      border: 'none',
+                      fontWeight: '700',
+                      fontSize: '0.83rem',
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    Track package
+                  </a>
                 )}
                 {secondaryBtns.map(({ label, action }) => (
                   <button key={label} onClick={action || undefined}

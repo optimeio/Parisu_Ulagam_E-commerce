@@ -1027,6 +1027,11 @@ function InnerApp() {
   const [ssHeroClassicImages, setSsHeroClassicImages] = useState(['/images/hero-classic.png']);
   const [ssBannerImageClassic, setSsBannerImageClassic] = useState(['/images/offer_classic.png']);
   const [ssAboutImage, setSsAboutImage] = useState(['/images/toy-classic.png']);
+  const [ssColImageAll, setSsColImageAll] = useState(['/images/col_all.png']);
+  const [ssColImageWomen, setSsColImageWomen] = useState(['/images/col_women.png']);
+  const [ssColImageMen, setSsColImageMen] = useState(['/images/col_men.png']);
+  const [ssColImageKids, setSsColImageKids] = useState(['/images/col_kids.png']);
+  const [ssColImageUnisex, setSsColImageUnisex] = useState(['/images/col_unisex.png']);
   const [ssSettingsLoaded, setSsSettingsLoaded] = useState(false);
 
   // Sync site settings state when siteSettings loads from API
@@ -1050,6 +1055,11 @@ function InnerApp() {
       if (siteSettings.heroClassicImage && siteSettings.heroClassicImage.length > 0) setSsHeroClassicImages(siteSettings.heroClassicImage);
       if (siteSettings.bannerImageClassic && siteSettings.bannerImageClassic.length > 0) setSsBannerImageClassic(siteSettings.bannerImageClassic);
       if (siteSettings.aboutImage && siteSettings.aboutImage.length > 0) setSsAboutImage(siteSettings.aboutImage);
+      if (siteSettings.colImageAll && siteSettings.colImageAll.length > 0) setSsColImageAll(siteSettings.colImageAll);
+      if (siteSettings.colImageWomen && siteSettings.colImageWomen.length > 0) setSsColImageWomen(siteSettings.colImageWomen);
+      if (siteSettings.colImageMen && siteSettings.colImageMen.length > 0) setSsColImageMen(siteSettings.colImageMen);
+      if (siteSettings.colImageKids && siteSettings.colImageKids.length > 0) setSsColImageKids(siteSettings.colImageKids);
+      if (siteSettings.colImageUnisex && siteSettings.colImageUnisex.length > 0) setSsColImageUnisex(siteSettings.colImageUnisex);
       setSsSettingsLoaded(true);
     }
   }, [siteSettings]);
@@ -1432,14 +1442,29 @@ function InnerApp() {
     formData.append('heroClassicImage', JSON.stringify(ssHeroClassicImages));
     formData.append('bannerImageClassic', JSON.stringify(ssBannerImageClassic));
     formData.append('aboutImage', JSON.stringify(ssAboutImage));
+    formData.append('colImageAll', JSON.stringify(ssColImageAll));
+    formData.append('colImageWomen', JSON.stringify(ssColImageWomen));
+    formData.append('colImageMen', JSON.stringify(ssColImageMen));
+    formData.append('colImageKids', JSON.stringify(ssColImageKids));
+    formData.append('colImageUnisex', JSON.stringify(ssColImageUnisex));
     // New image file uploads from the form element
     const form = e.target;
     const heroClassicImageFilesInput = form.querySelector('input[name="heroClassicImageFiles"]');
     const bannerImageClassicFilesInput = form.querySelector('input[name="bannerImageClassicFiles"]');
     const aboutImageFilesInput = form.querySelector('input[name="aboutImageFiles"]');
+    const colImageAllFilesInput = form.querySelector('input[name="colImageAllFiles"]');
+    const colImageWomenFilesInput = form.querySelector('input[name="colImageWomenFiles"]');
+    const colImageMenFilesInput = form.querySelector('input[name="colImageMenFiles"]');
+    const colImageKidsFilesInput = form.querySelector('input[name="colImageKidsFiles"]');
+    const colImageUnisexFilesInput = form.querySelector('input[name="colImageUnisexFiles"]');
     if (heroClassicImageFilesInput?.files) Array.from(heroClassicImageFilesInput.files).forEach(f => formData.append('heroClassicImageFiles', f));
     if (bannerImageClassicFilesInput?.files) Array.from(bannerImageClassicFilesInput.files).forEach(f => formData.append('bannerImageClassicFiles', f));
     if (aboutImageFilesInput?.files) Array.from(aboutImageFilesInput.files).forEach(f => formData.append('aboutImageFiles', f));
+    if (colImageAllFilesInput?.files) Array.from(colImageAllFilesInput.files).forEach(f => formData.append('colImageAllFiles', f));
+    if (colImageWomenFilesInput?.files) Array.from(colImageWomenFilesInput.files).forEach(f => formData.append('colImageWomenFiles', f));
+    if (colImageMenFilesInput?.files) Array.from(colImageMenFilesInput.files).forEach(f => formData.append('colImageMenFiles', f));
+    if (colImageKidsFilesInput?.files) Array.from(colImageKidsFilesInput.files).forEach(f => formData.append('colImageKidsFiles', f));
+    if (colImageUnisexFilesInput?.files) Array.from(colImageUnisexFilesInput.files).forEach(f => formData.append('colImageUnisexFiles', f));
     try {
       const r = await fetch('/api/admin/site-settings', {
         method: 'PUT',
@@ -2723,6 +2748,16 @@ function InnerApp() {
                                     id={`courier-track-${o.orderId}`}
                                     style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)', width: '100%' }}
                                   />
+                                  <input 
+                                    type="text" 
+                                    placeholder="Tracking Link — use {id} for auto-fill (e.g. https://dtdc.in/trace?txCNNo={id})" 
+                                    defaultValue={o.courierTrackingLink || ''}
+                                    id={`courier-link-${o.orderId}`}
+                                    style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)', width: '100%' }}
+                                  />
+                                  <p style={{ margin: '0', fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                                    💡 Use <code style={{ background: 'rgba(255,255,255,0.08)', padding: '1px 4px', borderRadius: '3px' }}>{'{id}'}</code> in the URL and it will be auto-replaced with the Tracking ID when customer clicks "Track Package".
+                                  </p>
                                   <button 
                                     type="button"
                                     className="primary-btn"
@@ -2730,14 +2765,15 @@ function InnerApp() {
                                     onClick={async () => {
                                       const cName = document.getElementById(`courier-name-${o.orderId}`).value.trim();
                                       const cTrack = document.getElementById(`courier-track-${o.orderId}`).value.trim();
+                                      const cLink = document.getElementById(`courier-link-${o.orderId}`).value.trim();
                                       try {
                                         const r = await fetch(`/api/admin/orders/${o.orderId}`, {
                                           method: 'PUT',
                                           headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
-                                          body: JSON.stringify({ status: o.status, courierName: cName, courierTrackingId: cTrack })
+                                          body: JSON.stringify({ status: o.status, courierName: cName, courierTrackingId: cTrack, courierTrackingLink: cLink })
                                         });
                                         if (r.ok) {
-                                          setAdminOrders(prev => prev.map(ord => ord.orderId === o.orderId ? { ...ord, courierName: cName, courierTrackingId: cTrack } : ord));
+                                          setAdminOrders(prev => prev.map(ord => ord.orderId === o.orderId ? { ...ord, courierName: cName, courierTrackingId: cTrack, courierTrackingLink: cLink } : ord));
                                           addToast('Courier tracking info saved.', 'success');
                                         }
                                       } catch { addToast('Failed to save tracking.', 'error'); }
@@ -3407,6 +3443,75 @@ function InnerApp() {
                       </div>
                     ))}
                     <input type="file" name="aboutImageFiles" multiple accept="image/*" style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '10px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* --- COLLECTION IMAGES SETTINGS --- */}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px', paddingBottom: '20px' }}>
+                <h4 style={{ color: 'var(--gold)', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  Collection Images
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                  <div className="admin-form-group">
+                    <label>Collection Image: All</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {ssColImageAll.map((img, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <img src={img} alt={`All ${idx}`} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} />
+                          <button type="button" onClick={() => setSsColImageAll([])} style={{ background: '#FF6F61', color: '#fff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>✕</button>
+                        </div>
+                      ))}
+                      <input type="file" name="colImageAllFiles" accept="image/*" style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '10px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                    </div>
+                  </div>
+                  <div className="admin-form-group">
+                    <label>Collection Image: Women</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {ssColImageWomen.map((img, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <img src={img} alt={`Women ${idx}`} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} />
+                          <button type="button" onClick={() => setSsColImageWomen([])} style={{ background: '#FF6F61', color: '#fff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>✕</button>
+                        </div>
+                      ))}
+                      <input type="file" name="colImageWomenFiles" accept="image/*" style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '10px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                    </div>
+                  </div>
+                  <div className="admin-form-group">
+                    <label>Collection Image: Men</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {ssColImageMen.map((img, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <img src={img} alt={`Men ${idx}`} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} />
+                          <button type="button" onClick={() => setSsColImageMen([])} style={{ background: '#FF6F61', color: '#fff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>✕</button>
+                        </div>
+                      ))}
+                      <input type="file" name="colImageMenFiles" accept="image/*" style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '10px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                    </div>
+                  </div>
+                  <div className="admin-form-group">
+                    <label>Collection Image: Kids</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {ssColImageKids.map((img, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <img src={img} alt={`Kids ${idx}`} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} />
+                          <button type="button" onClick={() => setSsColImageKids([])} style={{ background: '#FF6F61', color: '#fff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>✕</button>
+                        </div>
+                      ))}
+                      <input type="file" name="colImageKidsFiles" accept="image/*" style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '10px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                    </div>
+                  </div>
+                  <div className="admin-form-group">
+                    <label>Collection Image: Unisex & Couples</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {ssColImageUnisex.map((img, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <img src={img} alt={`Unisex ${idx}`} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} />
+                          <button type="button" onClick={() => setSsColImageUnisex([])} style={{ background: '#FF6F61', color: '#fff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>✕</button>
+                        </div>
+                      ))}
+                      <input type="file" name="colImageUnisexFiles" accept="image/*" style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '10px', borderRadius: '6px', color: 'var(--text-primary)', width: '100%' }} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -4547,7 +4652,7 @@ function InnerApp() {
               onClick={() => { setSelectedCollection('All'); document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' }); }}
             >
               <div className="arch-col-frame arch-all">
-                <img src="/images/col_all.png" alt="All Collections" className="arch-col-img" />
+                <img src={siteSettings?.colImageAll?.[0] || "/images/col_all.png"} alt="All Collections" className="arch-col-img" />
               </div>
               <span className="arch-col-label">All</span>
             </button>
@@ -4562,7 +4667,7 @@ function InnerApp() {
                 }}
               >
                 <div className={`arch-col-frame arch-${col.id.toLowerCase().replace(/[^a-z]/g, '-')}`}>
-                  <img src={col.image} alt={col.label} className="arch-col-img" />
+                  <img src={(col.id === 'Women' ? siteSettings?.colImageWomen?.[0] : col.id === 'Men' ? siteSettings?.colImageMen?.[0] : col.id === 'Kids' ? siteSettings?.colImageKids?.[0] : col.id === 'Unisex & Couples' ? siteSettings?.colImageUnisex?.[0] : null) || col.image} alt={col.label} className="arch-col-img" />
                 </div>
                 <span className="arch-col-label">{col.id}</span>
               </button>
