@@ -8,7 +8,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import Razorpay from 'razorpay';
 
 dotenv.config();
@@ -26,17 +26,32 @@ const supportEmail = process.env.SUPPORT_EMAIL || 'parisuulagam@gmail.com';
 const adminEmail = process.env.ADMIN_EMAIL || 'parisuulagam@gmail.com';
 const adminPassword = process.env.ADMIN_PASSWORD || 'TSMGPVT@2026';
 const appPassword = process.env.APP_PASSWORD || '';
+const resendApiKey = process.env.RESEND_API_KEY || '';
+const resendFromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@parisu.thesmgroups.com';
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: supportEmail,
-    pass: appPassword
-  },
-  tls: {
-    rejectUnauthorized: false
+// Initialize Resend email client
+const resend = new Resend(resendApiKey);
+
+// Helper function to send emails via Resend
+async function sendEmail({ from, to, subject, html }) {
+  try {
+    const { data, error } = await resend.emails.send({
+      from: from || `${appName} <${resendFromEmail}>`,
+      to: Array.isArray(to) ? to : [to],
+      subject,
+      html
+    });
+    if (error) {
+      console.error('[RESEND ERROR]', error);
+      throw new Error(error.message || 'Failed to send email via Resend');
+    }
+    console.log(`[RESEND] Email sent successfully. ID: ${data?.id}`);
+    return data;
+  } catch (err) {
+    console.error('[RESEND ERROR]', err);
+    throw err;
   }
-});
+}
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -780,9 +795,9 @@ app.post('/api/users/register-request', async (req, res) => {
 
     // Send the OTP via email
     try {
-      console.log(`[SMTP] Attempting to send OTP email to ${email}...`);
-      await transporter.sendMail({
-        from: `"${appName}" <${supportEmail}>`,
+      console.log(`[RESEND] Attempting to send OTP email to ${email}...`);
+      await sendEmail({
+        from: `${appName} <${resendFromEmail}>`,
         to: email,
         subject: `${appName} - Your Verification Code`,
         html: `
@@ -807,9 +822,9 @@ app.post('/api/users/register-request', async (req, res) => {
           </div>
         `
       });
-      console.log(`[SMTP] Email successfully sent to ${email}`);
+      console.log(`[RESEND] Email successfully sent to ${email}`);
     } catch (emailError) {
-      console.error(`[SMTP ERROR] Failed to send email to ${email}:`, emailError);
+      console.error(`[RESEND ERROR] Failed to send email to ${email}:`, emailError);
       return res.status(500).json({ 
         success: false, 
         message: 'Failed to send verification email. Please check the email address or contact support.',
@@ -881,8 +896,8 @@ app.post('/api/users/complete-register', async (req, res) => {
 
     // Send admin notification email
     try {
-      await transporter.sendMail({
-        from: `"${appName}" <${supportEmail}>`,
+      await sendEmail({
+        from: `${appName} <${resendFromEmail}>`,
         to: adminEmail,
         subject: `${appName} - New User Registered`,
         html: `
@@ -974,8 +989,8 @@ app.post('/api/users/forgot-password', async (req, res) => {
     console.log(`[PASSWORD RESET] Generated Code for ${email}: ${otp}`);
 
     try {
-      await transporter.sendMail({
-        from: `"${appName}" <${supportEmail}>`,
+      await sendEmail({
+        from: `${appName} <${resendFromEmail}>`,
         to: email,
         subject: `${appName} - Password Reset Verification Code`,
         html: `
@@ -1001,7 +1016,7 @@ app.post('/api/users/forgot-password', async (req, res) => {
         `
       });
     } catch (emailError) {
-      console.error(`[SMTP ERROR] Failed to send password reset email to ${email}:`, emailError);
+      console.error(`[RESEND ERROR] Failed to send password reset email to ${email}:`, emailError);
       return res.status(500).json({ success: false, message: 'Failed to send reset email. Please try again later.' });
     }
 
@@ -1183,8 +1198,8 @@ app.post('/api/users/checkout', requireUser, async (req, res) => {
           </tr>`
         ).join('');
 
-        await transporter.sendMail({
-          from: `"${appName}" <${supportEmail}>`,
+        await sendEmail({
+          from: `${appName} <${resendFromEmail}>`,
           to: user.email,
           subject: `✅ Order Confirmed & Invoice — ${orderId} | ${appName}`,
           html: `
@@ -1987,8 +2002,8 @@ app.put('/api/admin/orders/:orderId', requireAdmin, async (req, res) => {
         </div>
       `;
       try {
-        await transporter.sendMail({
-          from: `"Parisu Ulagam" <${supportEmail}>`,
+        await sendEmail({
+          from: `Parisu Ulagam <${resendFromEmail}>`,
           to: order.userEmail,
           subject: `${statusInfo.emoji} Order Update: ${newStatus} — Order ${order.orderId}`,
           html: emailHtml
@@ -2170,25 +2185,25 @@ app.post('/api/custom-requests', upload.array('referenceImages', 5), async (req,
     });
     await newRequest.save();
 
-    const mailOptions = {
-      from: supportEmail,
-      to: adminEmail,
-      subject: `New Custom Request from ${customerName}`,
-      html: `
-        <h3>New Custom Request Received</h3>
-        <p><strong>Customer Name:</strong> ${customerName}</p>
-        <p><strong>Email:</strong> ${customerEmail}</p>
-        <p><strong>Phone:</strong> ${customerPhone}</p>
-        <p><strong>Product Type:</strong> ${productType}</p>
-        <p><strong>Description:</strong> ${description}</p>
-        ${referenceImages.length > 0 ? `<p><strong>Reference Images:</strong> ${referenceImages.length} images uploaded.</p>` : ''}
-        <p>Log in to the admin panel to view details and update status.</p>
-      `
-    };
-    
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) console.error('Error sending custom request email to admin:', error);
-    });
+    try {
+      await sendEmail({
+        from: `${appName} <${resendFromEmail}>`,
+        to: adminEmail,
+        subject: `New Custom Request from ${customerName}`,
+        html: `
+          <h3>New Custom Request Received</h3>
+          <p><strong>Customer Name:</strong> ${customerName}</p>
+          <p><strong>Email:</strong> ${customerEmail}</p>
+          <p><strong>Phone:</strong> ${customerPhone}</p>
+          <p><strong>Product Type:</strong> ${productType}</p>
+          <p><strong>Description:</strong> ${description}</p>
+          ${referenceImages.length > 0 ? `<p><strong>Reference Images:</strong> ${referenceImages.length} images uploaded.</p>` : ''}
+          <p>Log in to the admin panel to view details and update status.</p>
+        `
+      });
+    } catch (emailErr) {
+      console.error('Error sending custom request email to admin:', emailErr);
+    }
 
     return res.json({ success: true, message: 'Custom request submitted successfully.', data: newRequest });
   } catch (error) {

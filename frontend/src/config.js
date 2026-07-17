@@ -4,7 +4,11 @@
  * In development (Vite dev server): API_BASE is empty, Vite proxy handles /api → localhost:5001
  * In production (Hostinger static): API_BASE is the Render backend URL
  */
-export const API_BASE = import.meta.env.VITE_API_URL || '';
+export const API_BASE = import.meta.env.VITE_API_URL || (
+  typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+    ? 'https://parisu-ulagam-e-commerce.onrender.com'
+    : ''
+);
 
 /**
  * Convert a relative asset path (e.g. /images/uploads/xyz.jpg) to a full URL
