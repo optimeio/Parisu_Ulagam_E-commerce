@@ -1088,6 +1088,23 @@ function InnerApp() {
   });
   const [userToken, setUserToken] = useState(() => localStorage.getItem('pu-user-token') || '');
 
+  // On startup: silently verify stored token — if server session expired, clear it
+  useEffect(() => {
+    const storedToken = localStorage.getItem('pu-user-token');
+    if (!storedToken) return;
+    fetch('/api/users/verify-token', {
+      headers: { 'x-user-token': storedToken }
+    }).then(res => {
+      if (res.status === 401) {
+        // Token is stale (e.g. server restarted) — clear silently
+        setCurrentUser(null);
+        setUserToken('');
+        localStorage.removeItem('pu-user');
+        localStorage.removeItem('pu-user-token');
+      }
+    }).catch(() => { /* network error — leave token as-is */ });
+  }, []); // runs once on mount
+
   // Registration step 1
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
@@ -1152,8 +1169,11 @@ function InnerApp() {
         headers: { 'Content-Type': 'application/json', 'x-user-token': userToken },
         body: JSON.stringify({ wishlist: wishlist.map(item => item.id) })
       }).then(res => {
-        if (res.status === 401) handleUserLogout();
-      }).catch(() => {});
+        if (res.status === 401) {
+          setCurrentUser(null); setUserToken('');
+          localStorage.removeItem('pu-user'); localStorage.removeItem('pu-user-token');
+        }
+      }).catch(() => { /* ignore network errors */ });
     }, 800);
     return () => clearTimeout(timer);
   }, [wishlist, userToken, currentUser]);
@@ -1175,8 +1195,11 @@ function InnerApp() {
         headers: { 'Content-Type': 'application/json', 'x-user-token': userToken },
         body: JSON.stringify({ cart: cartPayload })
       }).then(res => {
-        if (res.status === 401) handleUserLogout();
-      }).catch(() => {});
+        if (res.status === 401) {
+          setCurrentUser(null); setUserToken('');
+          localStorage.removeItem('pu-user'); localStorage.removeItem('pu-user-token');
+        }
+      }).catch(() => { /* ignore network errors */ });
     }, 800);
     return () => clearTimeout(timer);
   }, [cartItems, userToken, currentUser]);
@@ -4383,8 +4406,40 @@ function InnerApp() {
               <>
                 <div className="product-details-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px', marginBottom: '60px' }}>
                   {/* Left: Images */}
-                  <div className="product-details-images" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div style={{ background: 'var(--bg-secondary)', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border)', position: 'relative' }}>
+                  <div className="product-details-images" style={{ display: 'flex', flexDirection: 'row', gap: '16px', alignItems: 'flex-start' }}>
+                    {/* Left: Thumbnails */}
+                    {selectedProduct.images && selectedProduct.images.length > 1 && (
+                      <div className="thumbnail-column" style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', maxHeight: '500px', paddingRight: '8px', flexShrink: 0 }}>
+                        {selectedProduct.images.map((img, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              setActiveDetailImage(img);
+                              setSelectedColorIdx(idx);
+                            }}
+                            style={{
+                              background: 'var(--bg-secondary)',
+                              border: selectedColorIdx === idx ? '2.5px solid var(--gold)' : '1px solid var(--border)',
+                              borderRadius: '8px',
+                              overflow: 'hidden',
+                              minWidth: '60px',
+                              height: '60px',
+                              cursor: 'pointer',
+                              position: 'relative',
+                              boxShadow: selectedColorIdx === idx ? '0 0 0 3px rgba(201,168,76,0.25)' : 'none',
+                              transition: 'all 0.2s ease',
+                              padding: 0
+                            }}
+                            title={`Variant ${idx + 1}`}
+                          >
+                            <img src={img} alt={`Variant ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Right: Main Image with Inner Zoom */}
+                    <div style={{ background: 'var(--bg-secondary)', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border)', position: 'relative', flexGrow: 1, height: '500px' }}>
                       <button
                         className={`product-card__wishlist ${isWished(selectedProduct.id) ? 'active' : ''}`}
                         aria-label={`Toggle wishlist for ${selectedProduct.name}`}
@@ -4393,48 +4448,32 @@ function InnerApp() {
                       >
                         {isWished(selectedProduct.id) ? '♥' : '♡'}
                       </button>
-                      <img src={activeDetailImage} alt={selectedProduct.name} style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain', maxHeight: '500px' }} />
+                      <div 
+                        style={{ width: '100%', height: '100%', cursor: 'zoom-in', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        onMouseMove={(e) => {
+                          const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+                          const x = ((e.clientX - left) / width) * 100;
+                          const y = ((e.clientY - top) / height) * 100;
+                          e.currentTarget.firstChild.style.transformOrigin = `${x}% ${y}%`;
+                          e.currentTarget.firstChild.style.transform = 'scale(2.2)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.firstChild.style.transformOrigin = 'center';
+                          e.currentTarget.firstChild.style.transform = 'scale(1)';
+                        }}
+                      >
+                        <img 
+                          src={activeDetailImage} 
+                          alt={selectedProduct.name} 
+                          style={{ width: '100%', height: '100%', objectFit: 'contain', transition: 'transform 0.15s ease-out', pointerEvents: 'none' }} 
+                        />
+                      </div>
                       {selectedProduct.images && selectedProduct.images.length > 1 && (
-                        <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: '0.72rem', padding: '4px 10px', borderRadius: '20px', fontWeight: '600', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 14.7255 3.09032 17.1962 4.85857 19C5.35857 19.5 5.5 20 5.5 20.5C5.5 21.3284 6.17157 22 7 22H12Z"/><circle cx="7.5" cy="10.5" r="1.5"/><circle cx="11.5" cy="7.5" r="1.5"/><circle cx="16.5" cy="9.5" r="1.5"/><circle cx="15.5" cy="14.5" r="1.5"/></svg> Color {selectedColorIdx + 1} of {selectedProduct.images.length}
+                        <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: '0.72rem', padding: '4px 10px', borderRadius: '20px', fontWeight: '600', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', gap: '4px', zIndex: 5 }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 14.7255 3.09032 17.1962 4.85857 19C5.35857 19.5 5.5 20 5.5 20.5C5.5 21.3284 6.17157 22 7 22H12Z"/><circle cx="7.5" cy="10.5" r="1.5"/><circle cx="11.5" cy="7.5" r="1.5"/><circle cx="16.5" cy="9.5" r="1.5"/><circle cx="15.5" cy="14.5" r="1.5"/></svg> Image {selectedColorIdx + 1} of {selectedProduct.images.length}
                         </div>
                       )}
                     </div>
-                    {selectedProduct.images && selectedProduct.images.length > 1 && (
-                      <div>
-                        <div style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Select Color Variant</div>
-                        <div className="thumbnail-row" style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '8px' }}>
-                          {selectedProduct.images.map((img, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => {
-                                setActiveDetailImage(img);
-                                setSelectedColorIdx(idx);
-                              }}
-                              style={{
-                                background: 'var(--bg-secondary)',
-                                border: selectedColorIdx === idx ? '2.5px solid var(--gold)' : '1px solid var(--border)',
-                                borderRadius: '10px',
-                                overflow: 'hidden',
-                                minWidth: '80px',
-                                height: '80px',
-                                cursor: 'pointer',
-                                position: 'relative',
-                                boxShadow: selectedColorIdx === idx ? '0 0 0 3px rgba(201,168,76,0.25)' : 'none',
-                                transition: 'all 0.2s ease',
-                                padding: 0
-                              }}
-                              title={`Color variant ${idx + 1}`}
-                            >
-                              <img src={img} alt={`Color variant ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              {selectedColorIdx === idx && (
-                                <div style={{ position: 'absolute', bottom: '4px', right: '4px', width: '16px', height: '16px', borderRadius: '50%', background: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#fff', fontWeight: 'bold' }}>✓</div>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                   
                   {/* Right: Info */}

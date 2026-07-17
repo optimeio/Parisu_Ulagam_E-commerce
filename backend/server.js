@@ -1056,6 +1056,11 @@ app.post('/api/users/reset-password', async (req, res) => {
   }
 });
 
+// Token validation — used by frontend on startup to verify stored token is still valid
+app.get('/api/users/verify-token', requireUser, (req, res) => {
+  res.json({ valid: true, email: req.userEmail });
+});
+
 // 5. User Profile
 app.get('/api/users/profile', requireUser, async (req, res) => {
   try {

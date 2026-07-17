@@ -38,6 +38,7 @@ export const CustomerDashboard = ({ user, token, onClose, onLogout, initialTab =
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState(initialTab);
+  React.useEffect(() => { setActiveTab(initialTab); }, [initialTab]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [addressFormOpen, setAddressFormOpen] = useState(false);

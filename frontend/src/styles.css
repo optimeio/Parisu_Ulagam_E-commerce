@@ -4163,10 +4163,10 @@ input[type="password"] {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   max-width: 1300px;
   margin: 0 auto;
-  gap: 48px;
+  gap: 80px;
   width: 100%;
 }
 
@@ -4263,7 +4263,7 @@ input[type="password"] {
 }
 
 .hcs-copy-col {
-  flex: 1;
+  flex: 0 1 550px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -4861,3 +4861,6 @@ input[type="password"] {
   background: #ff0000;
   border-color: transparent;
 }
+
+.thumbnail-column::-webkit-scrollbar { width: 4px; }
+.thumbnail-column::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
